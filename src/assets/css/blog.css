@@ -279,7 +279,7 @@
   .recent-articles .blog-date {
     font-size: 0.875rem;
     line-height: 1.5em;
-    color: var(--bodyTextColor);
+    color: #fff;
   }
   .recent-articles .blog-dot {
     width: 3px;
@@ -299,7 +299,7 @@
     font-size: 1rem;
     line-height: 1.5em;
     margin: 1rem 0 2rem;
-    color: var(--bodyTextColor);
+    color: #fff;
   }
   .recent-articles .blog-link {
     font-size: 1rem;
@@ -480,7 +480,7 @@
   .blog-sidebar .feature-date {
     font-size: 0.875rem;
     line-height: 1.5em;
-    color: var(--bodyTextColor);
+    color: #fff;
     display: block;
   }
 }
@@ -543,7 +543,7 @@
   .blog-article .blog-date {
     font-size: 0.875rem;
     line-height: 1.5em;
-    color: var(--bodyTextColor);
+    color: #fff;
   }
   .blog-article .blog-dot {
     width: 3px;
@@ -570,21 +570,21 @@
     font-weight: 700;
     line-height: 1.75em;
     margin-bottom: 1rem;
-    color: var(--headerColor);
+    color: #fff;
   }
   .blog-article #blog-content h2 {
     font-size: 1.75rem;
     font-weight: 700;
     line-height: 1.5em;
     margin-bottom: 1rem;
-    color: var(--headerColor);
+    color: #fff;
   }
   .blog-article #blog-content h3 {
     font-size: 1.5rem;
     font-weight: 700;
     line-height: 1.5em;
     margin-bottom: 1rem;
-    color: var(--headerColor);
+    color: #fff;
   }
   .blog-article #blog-content h4,
   .blog-article #blog-content h5,
@@ -600,7 +600,7 @@
     line-height: 1.6em;
     margin: 0;
     margin-bottom: 1rem;
-    color: var(--bodyTextColor);
+    color: #fff;
   }
   .blog-article #blog-content a {
     font-size: inherit;
@@ -619,7 +619,7 @@
     line-height: 1.6em;
     list-style: circle;
     margin-bottom: 1rem;
-    color: var(--bodyTextColor);
+    color: #fff;
   }
   .blog-article #blog-content img {
     width: 100%;
