@@ -25,7 +25,7 @@
         box-sizing: border-box;
         padding: 0 calc(24 / 16 * 1rem);
         color: #fff;
-        background-color: var(--headerColor);
+        background-color: #fff;
         border-radius: calc(4 / 16 * 1rem);
         display: inline-block;
         position: relative;
@@ -40,7 +40,7 @@
             box-sizing: border-box;
             background: #fff;
             opacity: 0;
-            border: 1px solid var(--headerColor);
+            border: 1px solid #fff;
             border-radius: calc(4 / 16 * 1rem);
             position: absolute;
             top: 0;
@@ -51,7 +51,7 @@
         }
 
         &:hover {
-            color: var(--headerColor);
+            color: #fff;
             &:before {
                 opacity: 1;
             }
@@ -330,7 +330,7 @@
             font-weight: 700;
             line-height: 1.4em;
             margin: calc(16 / 16 * 1rem) 0;
-            color: var(--headerColor);
+            color: #fff;
         }
 
         .blog-desc {
@@ -353,7 +353,7 @@
             box-sizing: border-box;
             padding: 0 calc(24 / 16 * 1rem);
             color: #fff;
-            background-color: var(--headerColor);
+            background-color: #fff;
             border-radius: calc(4 / 16 * 1rem);
             display: inline-block;
             position: relative;
@@ -368,7 +368,7 @@
                 box-sizing: border-box;
                 background: #fff;
                 opacity: 0;
-                border: 1px solid var(--headerColor);
+                border: 1px solid #fff;
                 border-radius: calc(4 / 16 * 1rem);
                 position: absolute;
                 top: 0;
@@ -379,7 +379,7 @@
             }
 
             &:hover {
-                color: var(--headerColor);
+                color: #fff;
                 &:before {
                     opacity: 1;
                 }
@@ -483,7 +483,7 @@
             font-weight: bold;
             text-align: center;
             margin-bottom: calc(30 / 16 * 1rem);
-            color: var(--headerColor);
+            color: #fff;
             display: block;
             position: relative;
 
@@ -492,7 +492,7 @@
                 width: calc(50 / 16 * 1rem);
                 height: 3px;
                 margin: calc(16 / 16 * 1rem) auto;
-                background: var(--headerColor);
+                background: #fff;
                 border-radius: calc(4 / 16 * 1rem);
                 display: block;
                 position: relative;
@@ -545,7 +545,7 @@
             text-decoration: none;
             margin: 0;
             margin-bottom: calc(4 / 16 * 1rem);
-            color: var(--headerColor);
+            color: #fff;
             display: block;
         }
 
@@ -640,7 +640,7 @@
             line-height: 1.4em;
             max-width: calc(550 / 16 * 1rem);
             margin: calc(16 / 16 * 1rem) 0;
-            color: var(--headerColor);
+            color: #fff;
         }
 
         #blog-content {
@@ -679,7 +679,7 @@
                 font-weight: 700;
                 line-height: 1.5em;
                 margin-bottom: calc(16 / 16 * 1rem);
-                color: var(--headerColor);
+                color: #fff;
             }
 
             p {
@@ -712,7 +712,7 @@
             }
 
             img {
-                width: 100%;
+                max-width: 100%;
                 height: auto;
                 margin: calc(16 / 16 * 1rem) 0;
                 border-radius: calc(8 / 16 * 1rem);
