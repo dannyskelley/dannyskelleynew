@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Minimal Image Grid</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-color: #000;
+      --text-color: #fff;
+      --border-color: #333;
+      --accent-color: #666;
+    }
+
+    body.light-theme {
+      --bg-color: #fff;
+      --text-color: #000;
+      --border-color: #ddd;
+      --accent-color: #ccc;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s ease;
+      padding-top: 60px;
+    }
+
+    #header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--bg-color);
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    #theme-toggle {
+      background: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    #add-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .add-button {
+      background: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    #url-input {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      padding: 10px;
+      background: var(--bg-color);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 99;
+    }
+
+    #url-input input {
+      width: 70%;
+      padding: 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: var(--bg-color);
+      color: var(--text-color);
+    }
+
+    #url-input button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      background: var(--accent-color);
+      color: var(--text-color);
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    #image-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    @media (min-width: 600px) {
+      #image-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 900px) {
+      #image-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .image-container {
+      position: relative;
+      width: 100%;
+      animation: fade-in 0.3s ease;
+    }
+
+    .image-container img {
+      max-width: 100%;
+      display: block;
+      height: auto;
+      border-radius: 2px;
+    }
+
+    .delete-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .image-container:hover .delete-button {
+      opacity: 1;
+    }
+
+    #drop-zone {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .status-message {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent-color);
+      color: var(--text-color);
+      padding: 10px 20px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 101;
+    }
+
+    .status-message.active {
+      opacity: 1;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <button id="theme-toggle">☀️ Light Mode</button>
+    <div id="add-controls">
+      <button id="url-button" class="add-button">Add URL</button>
+      <button id="upload-button" class="add-button">Upload</button>
+      <input type="file" id="file-input" accept="image/*" multiple>
+    </div>
+  </div>
+
+  <div id="url-input">
+    <input type="text" placeholder="Enter image URL" id="image-url">
+    <button id="add-url-button">Add</button>
+  </div>
+
+  <div id="image-grid"></div>
+
+  <div id="drop-zone">Drop images here</div>
+
+  <div id="status-message" class="status-message"></div>
+
+  <script>
+    // State variables
+    let images = [];
+    let isDarkTheme = true;
+
+    // DOM elements
+    const themeToggle = document.getElementById('theme-toggle');
+    const urlButton = document.getElementById('url-button');
+    const uploadButton = document.getElementById('upload-button');
+    const fileInput = document.getElementById('file-input');
+    const urlInput = document.getElementById('url-input');
+    const imageUrlField = document.getElementById('image-url');
+    const addUrlButton = document.getElementById('add-url-button');
+    const imageGrid = document.getElementById('image-grid');
+    const dropZone = document.getElementById('drop-zone');
+    const statusMessage = document.getElementById('status-message');
+
+    // Helper functions
+    const saveToStorage = () => {
+      localStorage.setItem('images', JSON.stringify(images));
+      localStorage.setItem('isDarkTheme', isDarkTheme);
+    };
+
+    const loadFromStorage = () => {
+      const storedImages = localStorage.getItem('images');
+      if (storedImages) {
+        images = JSON.parse(storedImages);
+      }
+
+      const storedTheme = localStorage.getItem('isDarkTheme');
+      if (storedTheme !== null) {
+        isDarkTheme = storedTheme === 'true';
+      }
+
+      applyTheme();
+      renderImages();
+    };
+
+    const applyTheme = () => {
+      if (isDarkTheme) {
+        document.body.classList.remove('light-theme');
+        themeToggle.textContent = '☀️ Light Mode';
+      } else {
+        document.body.classList.add('light-theme');
+        themeToggle.textContent = '🌙 Dark Mode';
+      }
+    };
+
+    const showStatus = (message, duration = 2000) => {
+      const statusElement = document.getElementById('status-message');
+      statusElement.textContent = message;
+      statusElement.classList.add('active');
+      
+      setTimeout(() => {
+        statusElement.classList.remove('active');
+      }, duration);
+    };
+
+    const addImage = (url, isObjectURL = false) => {
+      if (!url) return;
+      
+      images.unshift({
+        url: url,
+        isObjectURL: isObjectURL,
+        id: Date.now() + Math.random().toString(36).substr(2, 9)
+      });
+      
+      saveToStorage();
+      renderImages();
+      showStatus('Image added');
+    };
+
+    const createImageElement = (imageData) => {
+      const container = document.createElement('div');
+      container.className = 'image-container';
+      container.dataset.id = imageData.id;
+      
+      const img = document.createElement('img');
+      img.src = imageData.url;
+      img.loading = 'lazy';
+      
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'delete-button';
+      deleteButton.innerHTML = '×';
+      deleteButton.addEventListener('click', () => {
+        images = images.filter(img => img.id !== imageData.id);
+        saveToStorage();
+        renderImages();
+        showStatus('Image removed');
+      });
+      
+      container.appendChild(img);
+      container.appendChild(deleteButton);
+      
+      return container;
+    };
+
+    const renderImages = () => {
+      imageGrid.innerHTML = '';
+      
+      if (images.length === 0) {
+        const placeholder = document.createElement('p');
+        placeholder.textContent = 'No images yet. Add some!';
+        placeholder.style.padding = '20px';
+        placeholder.style.textAlign = 'center';
+        placeholder.style.gridColumn = '1 / -1';
+        imageGrid.appendChild(placeholder);
+        return;
+      }
+      
+      images.forEach(imageData => {
+        const imageElement = createImageElement(imageData);
+        imageGrid.appendChild(imageElement);
+      });
+    };
+
+    const handleFileUpload = (files) => {
+      if (!files || files.length === 0) return;
+      
+      Array.from(files).forEach(file => {
+        if (!file.type.startsWith('image/')) {
+          showStatus('Only image files are supported');
+          return;
+        }
+        
+        const objectURL = URL.createObjectURL(file);
+        addImage(objectURL, true);
+      });
+    };
+
+    // Event listeners
+    themeToggle.addEventListener('click', () => {
+      isDarkTheme = !isDarkTheme;
+      applyTheme();
+      saveToStorage();
+      showStatus(isDarkTheme ? 'Dark mode activated' : 'Light mode activated');
+    });
+
+    urlButton.addEventListener('click', () => {
+      const isVisible = urlInput.style.display === 'block';
+      urlInput.style.display = isVisible ? 'none' : 'block';
+      if (!isVisible) {
+        imageUrlField.focus();
+      }
+    });
+
+    uploadButton.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      handleFileUpload(e.target.files);
+      fileInput.value = null; // Reset for repeated uploads of the same file
+    });
+
+    addUrlButton.addEventListener('click', () => {
+      const url = imageUrlField.value.trim();
+      if (url) {
+        addImage(url);
+        imageUrlField.value = '';
+        urlInput.style.display = 'none';
+      } else {
+        showStatus('Please enter a valid URL');
+      }
+    });
+
+    imageUrlField.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        addUrlButton.click();
+      } else if (e.key === 'Escape') {
+        urlInput.style.display = 'none';
+      }
+    });
+
+    // Drag and drop functionality
+    document.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.style.display = 'flex';
+    });
+
+    document.addEventListener('dragleave', (e) => {
+      if (e.clientX <= 0 || e.clientY <= 0 || 
+          e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+        dropZone.style.display = 'none';
+      }
+    });
+
+    document.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.style.display = 'none';
+      handleFileUpload(e.dataTransfer.files);
+    });
+
+    // Initialize
+    loadFromStorage();
+  </script>
+</body>
+</html>

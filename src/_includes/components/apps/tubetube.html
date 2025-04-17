@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Brutalist Video Grid</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #00ff66;
+      font-family: 'IBM Plex Mono', monospace;
+      padding-top: 60px;
+    }
+
+    #controls {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #000;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 10px 20px;
+      z-index: 1000;
+      box-shadow: 0 2px 10px rgba(0, 255, 102, 0.3);
+      box-sizing: border-box;
+    }
+
+    .left-controls, .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    input, button, select {
+      font-family: inherit;
+      font-size: 16px;
+      padding: 8px 12px;
+      background: #111;
+      color: #00ff66;
+      border: 1px solid #00ff66;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="text"] {
+      width: 250px;
+    }
+
+    input[type="number"] {
+      width: 60px;
+      padding: 6px;
+      font-size: 14px;
+      background: #000;
+      border: 1px solid #00aaff;
+      color: #00aaff;
+    }
+
+    button:hover {
+      background: #00ff66;
+      color: #000;
+    }
+
+    #videoGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      padding: 0 20px 40px;
+    }
+
+    @media (min-width: 1200px) {
+      #videoGrid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .videoWrapper {
+      position: relative;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    iframe {
+      width: 100%;
+      height: 240px;
+      border: none;
+      display: block;
+    }
+
+    .video-title {
+      background: #111;
+      color: #00ff66;
+      padding: 8px;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .video-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #111;
+      padding: 8px;
+      border-top: 1px solid #222;
+      display: none; /* Hidden by default, only shown in edit mode */
+    }
+
+    .orderInput {
+      width: 50px;
+      text-align: center;
+    }
+
+    .deleteBtn {
+      background: #330000;
+      border-color: #cc0000;
+      color: #ff6666;
+      padding: 4px 8px;
+      font-size: 14px;
+    }
+
+    .deleteBtn:hover {
+      background: #cc0000;
+      color: #fff;
+    }
+
+    #urlList {
+      padding: 0 20px 60px;
+      font-size: 14px;
+      color: #00ff99;
+      word-break: break-word;
+    }
+
+    #urlList h2 {
+      font-size: 16px;
+      color: #00ff66;
+      margin: 40px 0 10px;
+    }
+
+    #urlList p {
+      margin: 5px 0;
+    }
+
+    .set-controls {
+      background: #111;
+      padding: 20px;
+      margin: 20px;
+      border: 1px solid #00ff66;
+      border-radius: 4px;
+    }
+
+    .set-controls h2 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #00ff66;
+      padding-bottom: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .current-set-name {
+      font-weight: bold;
+      color: #00ffaa;
+    }
+
+    .set-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      align-items: center;
+      gap: 10px;
+      display: none; /* Hidden by default, only shown in edit mode */
+    }
+
+    .set-list {
+      margin-top: 20px;
+    }
+
+    .set-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px;
+      border: 1px solid #007733;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      background: #001100;
+    }
+
+    .set-item:hover {
+      background: #002200;
+    }
+
+    .set-item.active {
+      border: 1px solid #00ff66;
+      background: #003300;
+    }
+
+    .set-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 60%;
+    }
+
+    .set-actions {
+      display: flex;
+      gap: 10px;
+      display: none; /* Hidden by default, only shown in edit mode */
+    }
+
+    .set-actions button {
+      padding: 4px 8px;
+      font-size: 14px;
+    }
+
+    .load-btn {
+      background: #003366;
+      border-color: #0066cc;
+      color: #66ccff;
+    }
+
+    .load-btn:hover {
+      background: #0066cc;
+      color: #000;
+    }
+
+    .edit-btn {
+      background: #333300;
+      border-color: #999900;
+      color: #ffff66;
+    }
+
+    .edit-btn:hover {
+      background: #999900;
+      color: #000;
+    }
+
+    .delete-set-btn {
+      background: #330000;
+      border-color: #cc0000;
+      color: #ff6666;
+    }
+
+    .delete-set-btn:hover {
+      background: #cc0000;
+      color: #000;
+    }
+
+    .edit-mode .video-controls,
+    .edit-mode .set-row,
+    .edit-mode .set-actions {
+      display: flex; /* Show in edit mode */
+    }
+
+    .mode-indicator {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #111;
+      padding: 10px 15px;
+      border-radius: 5px;
+      border: 1px solid #00ff66;
+      color: #00ff66;
+      font-weight: bold;
+      animation: fadeIn 0.3s ease-in-out;
+      z-index: 1000;
+    }
+
+    .status-message {
+      text-align: center;
+      padding: 10px;
+      font-weight: bold;
+      margin: 10px 0;
+      animation: pulse 2s infinite;
+    }
+
+    .autosave-indicator {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #111;
+      padding: 6px 12px;
+      border-radius: 5px;
+      border: 1px solid #007733;
+      color: #00cc66;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 1000;
+    }
+
+    .autosave-indicator.active {
+      opacity: 1;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="controls">
+    <div class="left-controls">
+      <input type="text" id="urlInput" placeholder="PASTE YOUTUBE URL" />
+      <button id="addBtn">ADD VIDEO</button>
+    </div>
+    <div class="right-controls">
+      <button id="editModeBtn">EDIT MODE</button>
+      <button id="newSetBtn">NEW SET</button>
+    </div>
+  </div>
+
+  <div id="statusMessage" class="status-message" style="display: none;"></div>
+  
+  <div id="modeIndicator" class="mode-indicator" style="display: none;">EDIT MODE</div>
+  
+  <div id="autosaveIndicator" class="autosave-indicator">AUTOSAVING...</div>
+
+  <div id="videoGrid"></div>
+
+  <div class="set-controls" id="setControlsContainer">
+    <h2>
+      <span>📼 SET MANAGEMENT</span>
+      <span class="current-set-name" id="currentSetDisplay"></span>
+    </h2>
+    <div class="set-row">
+      <input type="text" id="setNameInput" placeholder="Name for current set" />
+      <div class="btn-group">
+        <button id="saveSetBtn">SAVE AS NEW</button>
+        <button id="updateSetBtn">UPDATE CURRENT</button>
+      </div>
+    </div>
+    <div class="set-list" id="setList">
+      <!-- Set items will be populated here -->
+    </div>
+  </div>
+
+  <div id="urlList">
+    <h2>📄 Video URLs</h2>
+    <div id="urlOutput"></div>
+  </div>
+
+  <script>
+    // State variables
+    let videoIds = [];
+    let videoTitles = {};
+    let currentSetName = "Default Set";
+    let sets = {};
+    let isEditMode = false;
+    let hasUnsavedChanges = false;
+    let autosaveTimer = null;
+    const AUTOSAVE_DELAY = 3000; // 3 seconds
+
+    // DOM elements
+    const videoGrid = document.getElementById('videoGrid');
+    const urlOutput = document.getElementById('urlOutput');
+    const setList = document.getElementById('setList');
+    const currentSetDisplay = document.getElementById('currentSetDisplay');
+    const statusMessage = document.getElementById('statusMessage');
+    const modeIndicator = document.getElementById('modeIndicator');
+    const autosaveIndicator = document.getElementById('autosaveIndicator');
+    const setControlsContainer = document.getElementById('setControlsContainer');
+
+    // Helper functions
+    const getVideoId = url => {
+      const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([\w-]{11})/);
+      return match ? match[1] : null;
+    };
+
+    const toFullUrl = videoId => `https://www.youtube.com/watch?v=${videoId}`;
+
+    const saveToStorage = () => {
+      localStorage.setItem('currentSetName', currentSetName);
+      localStorage.setItem('videoIds', JSON.stringify(videoIds));
+      localStorage.setItem('videoTitles', JSON.stringify(videoTitles));
+      localStorage.setItem('sets', JSON.stringify(sets));
+    };
+
+    const loadFromStorage = () => {
+      const storedSets = localStorage.getItem('sets');
+      if (storedSets) {
+        sets = JSON.parse(storedSets);
+      }
+      
+      currentSetName = localStorage.getItem('currentSetName') || "Default Set";
+      
+      const stored = JSON.parse(localStorage.getItem('videoIds') || '[]');
+      videoIds = stored;
+      
+      const storedTitles = localStorage.getItem('videoTitles');
+      if (storedTitles) {
+        videoTitles = JSON.parse(storedTitles);
+      }
+      
+      updateCurrentSetDisplay();
+      renderVideos();
+      renderSetList();
+    };
+
+    const updateCurrentSetDisplay = () => {
+      currentSetDisplay.textContent = currentSetName;
+      document.getElementById('setNameInput').value = currentSetName;
+    };
+
+    const showStatus = (message, duration = 3000) => {
+      statusMessage.textContent = message;
+      statusMessage.style.display = 'block';
+      setTimeout(() => {
+        statusMessage.style.display = 'none';
+      }, duration);
+    };
+
+    const checkUnsavedChanges = () => {
+      // Check if current set exists and if content has changed
+      if (sets[currentSetName]) {
+        const currentVideos = sets[currentSetName].videos;
+        if (videoIds.length !== currentVideos.length) {
+          return true;
+        }
+        
+        for (let i = 0; i < videoIds.length; i++) {
+          if (videoIds[i] !== currentVideos[i]) {
+            return true;
+          }
+        }
+        
+        return false;
+      }
+      
+      // If there's no saved set with this name but we have videos, changes are unsaved
+      return videoIds.length > 0;
+    };
+
+    // Autosave functionality
+    const triggerAutosave = () => {
+      if (!hasUnsavedChanges) return;
+      
+      // Show autosave indicator
+      autosaveIndicator.classList.add('active');
+      
+      // Clear existing timer
+      if (autosaveTimer) {
+        clearTimeout(autosaveTimer);
+      }
+      
+      // Set new timer
+      autosaveTimer = setTimeout(() => {
+        if (hasUnsavedChanges) {
+          // Save changes to current set or create a new one
+          if (currentSetName && sets[currentSetName]) {
+            sets[currentSetName] = {
+              videos: [...videoIds],
+              titles: {...videoTitles},
+              lastUpdated: new Date().toISOString()
+            };
+          } else {
+            // If no current set, create a new default one
+            sets[currentSetName] = {
+              videos: [...videoIds],
+              titles: {...videoTitles},
+              lastUpdated: new Date().toISOString()
+            };
+          }
+          
+          saveToStorage();
+          hasUnsavedChanges = false;
+          
+          // Hide autosave indicator after a short delay
+          setTimeout(() => {
+            autosaveIndicator.classList.remove('active');
+          }, 1000);
+        }
+      }, AUTOSAVE_DELAY);
+    };
+
+    // Mode management
+    const toggleEditMode = () => {
+      isEditMode = !isEditMode;
+      
+      // Toggle edit mode class on body
+      document.body.classList.toggle('edit-mode', isEditMode);
+      
+      // Show/hide mode indicator
+      modeIndicator.style.display = isEditMode ? 'block' : 'none';
+      
+      // Update button text
+      document.getElementById('editModeBtn').textContent = isEditMode ? 'VIEW MODE' : 'EDIT MODE';
+      
+      // Re-render to update UI elements visibility
+      renderVideos();
+      renderSetList();
+      
+      showStatus(isEditMode ? "Edit mode activated" : "View mode activated", 2000);
+    };
+
+    // Fetch video title from YouTube API
+    const fetchVideoTitle = async (videoId) => {
+      try {
+        // Note: Actual implementation would require a YouTube API key
+        // This is a placeholder - in real usage, use YouTube Data API v3
+        // Example: return the ID as placeholder
+        return `Video ${videoId}`;
+      } catch (error) {
+        console.error('Error fetching video title:', error);
+        return `Video ${videoId}`;
+      }
+    };
+
+    // Video creation and rendering
+    const createVideo = (videoId, index) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'videoWrapper';
+      wrapper.dataset.id = videoId;
+      wrapper.dataset.index = index;
+
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://www.youtube.com/embed/${videoId}`;
+      iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+      iframe.allowFullscreen = true;
+
+      const title = document.createElement('div');
+      title.className = 'video-title';
+      title.textContent = videoTitles[videoId] || `Video ${videoId}`;
+
+      const controls = document.createElement('div');
+      controls.className = 'video-controls';
+
+      const positionLabel = document.createElement('span');
+      positionLabel.textContent = `Position: `;
+
+      const orderInput = document.createElement('input');
+      orderInput.className = 'orderInput';
+      orderInput.type = 'number';
+      orderInput.value = index + 1;
+      orderInput.min = 1;
+      orderInput.max = videoIds.length;
+      orderInput.dataset.videoId = videoId;
+      orderInput.addEventListener('change', () => {
+        const newIndex = parseInt(orderInput.value) - 1;
+        if (isNaN(newIndex) || newIndex < 0 || newIndex >= videoIds.length) {
+          orderInput.value = index + 1;
+          return;
+        }
+        
+        // Apply immediately in edit mode
+        const currentIndex = videoIds.indexOf(videoId);
+        videoIds.splice(currentIndex, 1);
+        videoIds.splice(newIndex, 0, videoId);
+        hasUnsavedChanges = true;
+        triggerAutosave();
+        renderVideos();
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'deleteBtn';
+      deleteBtn.textContent = 'DELETE';
+      deleteBtn.addEventListener('click', () => {
+        if (confirm('Remove this video?')) {
+          videoIds = videoIds.filter(id => id !== videoId);
+          hasUnsavedChanges = true;
+          triggerAutosave();
+          renderVideos();
+        }
+      });
+
+      controls.appendChild(positionLabel);
+      controls.appendChild(orderInput);
+      controls.appendChild(deleteBtn);
+
+      wrapper.appendChild(iframe);
+      wrapper.appendChild(title);
+      wrapper.appendChild(controls);
+
+      return wrapper;
+    };
+
+    const renderVideos = () => {
+      videoGrid.innerHTML = '';
+      videoIds.forEach((id, index) => {
+        const video = createVideo(id, index);
+        videoGrid.appendChild(video);
+      });
+      renderUrlList();
+      hasUnsavedChanges = checkUnsavedChanges();
+      
+      // Trigger autosave if there are unsaved changes
+      if (hasUnsavedChanges) {
+        triggerAutosave();
+      }
+    };
+
+    const renderUrlList = () => {
+      urlOutput.innerHTML = '';
+      const list = videoIds
+        .map(id => `<p>${toFullUrl(id)}</p>`)
+        .join('');
+      urlOutput.innerHTML = list || '<p><em>No videos added yet.</em></p>';
+    };
+
+    const renderSetList = () => {
+      setList.innerHTML = '';
+      
+      Object.keys(sets).forEach(setName => {
+        const setItem = document.createElement('div');
+        setItem.className = 'set-item';
+        if (setName === currentSetName) {
+          setItem.classList.add('active');
+        }
+        
+        const setNameSpan = document.createElement('span');
+        setNameSpan.className = 'set-name';
+        setNameSpan.textContent = `${setName} (${sets[setName].videos.length} videos)`;
+        
+        // Make the entire set item clickable to load in view mode
+        if (!isEditMode) {
+          setItem.addEventListener('click', () => {
+            loadSet(setName);
+          });
+        }
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'set-actions';
+        
+        const loadBtn = document.createElement('button');
+        loadBtn.className = 'load-btn';
+        loadBtn.textContent = 'LOAD';
+        loadBtn.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent set item click event
+          loadSet(setName);
+        });
+        
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.textContent = 'RENAME';
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent set item click event
+          const newName = prompt("Enter new name for this set:", setName);
+          if (newName && newName.trim() !== "" && newName !== setName) {
+            if (sets[newName]) {
+              alert(`Set name "${newName}" already exists!`);
+              return;
+            }
+            
+            // Rename the set
+            sets[newName] = sets[setName];
+            delete sets[setName];
+            
+            // Update current set name if we're editing the active set
+            if (currentSetName === setName) {
+              currentSetName = newName;
+              updateCurrentSetDisplay();
+            }
+            
+            saveToStorage();
+            renderSetList();
+            showStatus(`Renamed set to "${newName}"`);
+          }
+        });
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-set-btn';
+        deleteBtn.textContent = 'DELETE';
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent set item click event
+          if (confirm(`Are you sure you want to delete set "${setName}"?`)) {
+            delete sets[setName];
+            
+            // If we deleted the current set, create a new default
+            if (currentSetName === setName) {
+              currentSetName = "Default Set";
+              updateCurrentSetDisplay();
+            }
+            
+            saveToStorage();
+            renderSetList();
+            showStatus(`Deleted set "${setName}"`);
+          }
+        });
+        
+        actionsDiv.appendChild(loadBtn);
+        actionsDiv.appendChild(editBtn);
+        actionsDiv.appendChild(deleteBtn);
+        
+        setItem.appendChild(setNameSpan);
+        setItem.appendChild(actionsDiv);
+        
+        setList.appendChild(setItem);
+      });
+      
+      if (Object.keys(sets).length === 0) {
+        setList.innerHTML = '<p><em>No saved sets yet.</em></p>';
+      }
+    };
+
+    // Set management functions
+    const saveCurrentSet = (asNew = true) => {
+      if (!isEditMode) {
+        showStatus("Enter edit mode to save sets", 2000);
+        return;
+      }
+      
+      const nameInput = document.getElementById('setNameInput');
+      let setName = nameInput.value.trim();
+      
+      if (setName === "") {
+        setName = `Set ${Object.keys(sets).length + 1}`;
+      }
+      
+      if (!asNew && setName !== currentSetName) {
+        // Rename scenario
+        if (sets[currentSetName]) {
+          // Copy set data to new name
+          sets[setName] = {...sets[currentSetName]};
+          // Delete old name
+          delete sets[currentSetName];
+          showStatus(`Set renamed to "${setName}"`);
+        }
+      } else if (asNew && sets[setName] && !confirm(`Set "${setName}" already exists. Overwrite?`)) {
+        return;
+      }
+      
+      // Save the current set
+      sets[setName] = {
+        videos: [...videoIds],
+        titles: {...videoTitles},
+        lastUpdated: new Date().toISOString()
+      };
+      
+      currentSetName = setName;
+      updateCurrentSetDisplay();
+      saveToStorage();
+      renderSetList();
+      hasUnsavedChanges = false;
+      
+      // Clear any autosave timer and hide indicator
+      if (autosaveTimer) {
+        clearTimeout(autosaveTimer);
+        autosaveTimer = null;
+      }
+      autosaveIndicator.classList.remove('active');
+      
+      if (asNew) {
+        showStatus(`Set "${setName}" saved successfully!`);
+      } else {
+        showStatus(`Set "${setName}" updated!`);
+      }
+    };
+
+    const updateCurrentSet = () => {
+      if (!isEditMode) {
+        showStatus("Enter edit mode to update sets", 2000);
+        return;
+      }
+      
+      if (currentSetName && sets[currentSetName]) {
+        sets[currentSetName] = {
+          videos: [...videoIds],
+          titles: {...videoTitles},
+          lastUpdated: new Date().toISOString()
+        };
+        saveToStorage();
+        hasUnsavedChanges = false;
+        
+        // Clear any autosave timer and hide indicator
+        if (autosaveTimer) {
+          clearTimeout(autosaveTimer);
+          autosaveTimer = null;
+        }
+        autosaveIndicator.classList.remove('active');
+        
+        showStatus(`Set "${currentSetName}" updated!`);
+      } else {
+        saveCurrentSet(true);
+      }
+    };
+
+    const loadSet = (setName) => {
+      if (sets[setName]) {
+        if (hasUnsavedChanges && !confirm(`You have unsaved changes. Load set "${setName}" anyway?`)) {
+          return;
+        }
+        
+        videoIds = [...sets[setName].videos];
+        videoTitles = {...sets[setName].titles} || {};
+        currentSetName = setName;
+        updateCurrentSetDisplay();
+        saveToStorage();
+        renderVideos();
+        renderSetList();
+        hasUnsavedChanges = false;
+        
+        // Clear any autosave timer and hide indicator
+        if (autosaveTimer) {
+          clearTimeout(autosaveTimer);
+          autosaveTimer = null;
+        }
+        autosaveIndicator.classList.remove('active');
+        
+        showStatus(`Loaded set "${setName}"`);
+      }
+    };
+
+    const createNewSet = () => {
+      // Only ask for confirmation if there are unsaved changes
+      if (!hasUnsavedChanges || confirm("You have unsaved changes. Create a new empty set anyway?")) {
+        videoIds = [];
+        videoTitles = {};
+        currentSetName = `New Set ${Object.keys(sets).length + 1}`;
+        updateCurrentSetDisplay();
+        saveToStorage();
+        renderVideos();
+        renderSetList();
+        hasUnsavedChanges = false;
+        
+        // Clear any autosave timer and hide indicator
+        if (autosaveTimer) {
+          clearTimeout(autosaveTimer);
+          autosaveTimer = null;
+        }
+        autosaveIndicator.classList.remove('active');
+        
+        showStatus("Created new empty set");
+      }
+    };
+
+    // Video management functions
+    const addVideo = async () => {
+      const input = document.getElementById('urlInput');
+      const url = input.value.trim();
+      const videoId = getVideoId(url);
+      
+      if (!videoId) {
+        alert('INVALID URL - Could not extract YouTube video ID');
+        return;
+      }
+      
+      if (videoIds.includes(videoId)) {
+        alert('VIDEO ALREADY ADDED');
+        return;
+      }
+      
+      videoIds.unshift(videoId); // Add to front
+      
+      // Try to get video title
+      if (!videoTitles[videoId]) {
+        const title = await fetchVideoTitle(videoId);
+        videoTitles[videoId] = title;
+      }
+      
+      hasUnsavedChanges = true;
+      triggerAutosave();
+      renderVideos();
+      input.value = '';
+      showStatus("Video added!");
+    };
+
+    // Event listeners
+    document.getElementById('addBtn').addEventListener('click', addVideo);
+    document.getElementById('urlInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addVideo();
+    });
+
+    document.getElementById('editModeBtn').addEventListener('click', toggleEditMode);
+    
+    document.getElementById('saveSetBtn').addEventListener('click', () => saveCurrentSet(true));
+    document.getElementById('updateSetBtn').addEventListener('click', updateCurrentSet);
+    document.getElementById('newSetBtn').addEventListener('click', createNewSet);
+
+    // Window beforeunload event to warn about unsaved changes
+    window.addEventListener('beforeunload', (e) => {
+      if (hasUnsavedChanges) {
+        // This message might not be displayed in modern browsers,
+        // but the dialog asking to leave will still appear
+        const message = 'You have unsaved changes. Are you sure you want to leave?';
+        e.returnValue = message;
+        return message;
+      }
+    });
+
+    // Initialize
+    loadFromStorage();
+    // Apply edit mode class initially
+    document.body.classList.toggle('edit-mode', isEditMode);
+  </script>
+
+</body>
+</html>
