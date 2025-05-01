@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Firebase Auth Example</title>
+  <title>One Important Task</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
-      max-width: 500px;
+      max-width: 800px;
       margin: 0 auto;
       padding: 20px;
     }
@@ -72,11 +72,48 @@
     button:hover {
       background-color: #3367d6;
     }
+    .task-input {
+      width: 100%;
+      padding: 20px;
+      font-size: 24px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      margin: 30px 0;
+      box-sizing: border-box;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 150px;
+      transition: border-color 0.3s;
+    }
+    .task-input:focus {
+      border-color: #4285f4;
+      outline: none;
+    }
+    .task-header {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 28px;
+      color: #333;
+    }
+    .user-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .success-message {
+      color: #2e7d32;
+      background-color: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 15px;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Firebase Authentication</h1>
+    <h1>One Important Task</h1>
     
     <!-- Auth state UI -->
     <div id="auth-status"></div>
@@ -121,33 +158,47 @@
     
     <!-- User profile (when logged in) -->
     <div id="user-profile" style="display: none;">
-      <h2>Welcome!</h2>
-      <p>You're logged in with: <span id="user-email"></span></p>
-      <button onclick="logoutUser()">Logout</button>
+      <div class="user-bar">
+        <p>Logged in as: <span id="user-email"></span></p>
+        <button onclick="logoutUser()">Logout</button>
+      </div>
+      
+      <div class="task-section">
+        <h2 class="task-header">What's your most important task today?</h2>
+        <textarea id="daily-task" class="task-input" placeholder="Enter your most important task here..."></textarea>
+        <button onclick="saveTask()">Save Task</button>
+        <div id="save-success" class="success-message">Task saved successfully!</div>
+      </div>
     </div>
   </div>
 
   <!-- Load Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   
   <script>
-    // Make sure Firebase is loaded before initializing
+    // Firebase initialization and auth state listener
+    let db; // Firestore database reference
+    
     document.addEventListener('DOMContentLoaded', function() {
       // Your Firebase configuration
       const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyCtSyxL513bakZ4EppkkCxuWWYyhEcKn7s",
+        authDomain: "first-project-4e469.firebaseapp.com",
+        projectId: "first-project-4e469",
+        storageBucket: "first-project-4e469.firebasestorage.app",
+        messagingSenderId: "64558266507",
+        appId: "1:64558266507:web:2a6cd421db18f4627c3c8e"
       };
       
       // Check if Firebase is available
       if (typeof firebase !== 'undefined') {
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
+        
+        // Initialize Firestore
+        db = firebase.firestore();
         
         // Listen for auth state changes
         firebase.auth().onAuthStateChanged((user) => {
@@ -157,6 +208,9 @@
             document.getElementById('user-profile').style.display = 'block';
             document.getElementById('user-email').textContent = user.email;
             document.getElementById('auth-status').innerHTML = '<p>Authentication status: <strong>Logged in</strong></p>';
+            
+            // Load the user's task
+            loadUserTask(user.uid);
           } else {
             // User is signed out
             document.getElementById('auth-forms').style.display = 'block';
@@ -283,6 +337,71 @@
       errorElement.textContent = message;
       errorElement.style.display = 'block';
     }
+    
+    // Load user's task from Firestore
+    function loadUserTask(userId) {
+      if (!db) {
+        console.error("Firestore not initialized");
+        return;
+      }
+      
+      db.collection('tasks').doc(userId).get()
+        .then((doc) => {
+          if (doc.exists && doc.data().task) {
+            // Set the task text in the textarea
+            document.getElementById('daily-task').value = doc.data().task;
+          } else {
+            // No existing task found
+            document.getElementById('daily-task').value = '';
+          }
+        })
+        .catch((error) => {
+          console.error("Error loading task:", error);
+        });
+    }
+    
+    // Save user's task to Firestore
+    function saveTask() {
+      const user = firebase.auth().currentUser;
+      const taskText = document.getElementById('daily-task').value.trim();
+      
+      if (!user) {
+        console.error("No user logged in");
+        return;
+      }
+      
+      if (!db) {
+        console.error("Firestore not initialized");
+        return;
+      }
+      
+      // Save the task to Firestore
+      db.collection('tasks').doc(user.uid).set({
+        task: taskText,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      })
+      .then(() => {
+        // Show success message
+        const successMsg = document.getElementById('save-success');
+        successMsg.style.display = 'block';
+        
+        // Hide success message after 3 seconds
+        setTimeout(() => {
+          successMsg.style.display = 'none';
+        }, 3000);
+      })
+      .catch((error) => {
+        console.error("Error saving task:", error);
+        alert("Error saving your task. Please try again.");
+      });
+    }
+    
+    // Auto-save task when user stops typing (optional enhancement)
+    let autoSaveTimeout;
+    document.getElementById('daily-task').addEventListener('input', function() {
+      clearTimeout(autoSaveTimeout);
+      autoSaveTimeout = setTimeout(saveTask, 2000); // Auto-save 2 seconds after typing stops
+    });
   </script>
 </body>
 </html>
