@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Auth Example</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .container {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ddd;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      border-bottom: 2px solid #4285f4;
+      font-weight: bold;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .error {
+      color: #d32f2f;
+      margin-bottom: 15px;
+      padding: 10px;
+      background-color: #ffebee;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #3367d6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Firebase Authentication</h1>
+    
+    <!-- Auth state UI -->
+    <div id="auth-status"></div>
+    
+    <!-- Auth forms -->
+    <div id="auth-forms">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('login')">Login</div>
+        <div class="tab" onclick="switchTab('signup')">Sign Up</div>
+      </div>
+      
+      <!-- Login form -->
+      <div id="login-tab" class="tab-content active">
+        <h2>Login</h2>
+        <div id="login-error" class="error" style="display: none;"></div>
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="Enter your email">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="Enter your password">
+        </div>
+        <button onclick="loginUser()">Login</button>
+      </div>
+      
+      <!-- Sign up form -->
+      <div id="signup-tab" class="tab-content">
+        <h2>Create an Account</h2>
+        <div id="signup-error" class="error" style="display: none;"></div>
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" placeholder="Enter your email">
+        </div>
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input type="password" id="signup-password" placeholder="Choose a password">
+        </div>
+        <button onclick="signupUser()">Sign Up</button>
+      </div>
+    </div>
+    
+    <!-- User profile (when logged in) -->
+    <div id="user-profile" style="display: none;">
+      <h2>Welcome!</h2>
+      <p>You're logged in with: <span id="user-email"></span></p>
+      <button onclick="logoutUser()">Logout</button>
+    </div>
+  </div>
+
+  <!-- Load Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  
+  <script>
+    // Make sure Firebase is loaded before initializing
+    document.addEventListener('DOMContentLoaded', function() {
+      // Your Firebase configuration
+      const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+      };
+      
+      // Check if Firebase is available
+      if (typeof firebase !== 'undefined') {
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Listen for auth state changes
+        firebase.auth().onAuthStateChanged((user) => {
+          if (user) {
+            // User is signed in
+            document.getElementById('auth-forms').style.display = 'none';
+            document.getElementById('user-profile').style.display = 'block';
+            document.getElementById('user-email').textContent = user.email;
+            document.getElementById('auth-status').innerHTML = '<p>Authentication status: <strong>Logged in</strong></p>';
+          } else {
+            // User is signed out
+            document.getElementById('auth-forms').style.display = 'block';
+            document.getElementById('user-profile').style.display = 'none';
+            document.getElementById('auth-status').innerHTML = '<p>Authentication status: <strong>Not logged in</strong></p>';
+            
+            // Clear form fields
+            document.getElementById('login-email').value = '';
+            document.getElementById('login-password').value = '';
+            document.getElementById('signup-email').value = '';
+            document.getElementById('signup-password').value = '';
+          }
+        });
+      } else {
+        console.error("Firebase SDK not loaded!");
+        document.getElementById('auth-status').innerHTML = '<p>Error: Firebase SDK failed to load. Check console for details.</p>';
+      }
+    });
+    
+    // Tab switching function
+    function switchTab(tabName) {
+      // Hide all tab contents
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Deactivate all tabs
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Activate selected tab
+      document.getElementById(`${tabName}-tab`).classList.add('active');
+      
+      // Fix the selector to correctly identify tabs by their content
+      if (tabName === 'login') {
+        document.querySelector('.tab:nth-child(1)').classList.add('active');
+      } else {
+        document.querySelector('.tab:nth-child(2)').classList.add('active');
+      }
+      
+      // Hide any previous error messages
+      document.getElementById('login-error').style.display = 'none';
+      document.getElementById('signup-error').style.display = 'none';
+    }
+    
+    // User login function
+    function loginUser() {
+      // Check if Firebase is initialized
+      if (typeof firebase === 'undefined' || !firebase.auth) {
+        showError('login', 'Firebase not initialized. Please refresh the page.');
+        return;
+      }
+      
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      
+      if (!email || !password) {
+        showError('login', 'Please enter both email and password');
+        return;
+      }
+      
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+          // Hide the error message if it was showing
+          document.getElementById('login-error').style.display = 'none';
+        })
+        .catch((error) => {
+          // Show error message
+          showError('login', `Login failed: ${error.message}`);
+        });
+    }
+    
+    // User signup function
+    function signupUser() {
+      // Check if Firebase is initialized
+      if (typeof firebase === 'undefined' || !firebase.auth) {
+        showError('signup', 'Firebase not initialized. Please refresh the page.');
+        return;
+      }
+      
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      
+      if (!email || !password) {
+        showError('signup', 'Please enter both email and password');
+        return;
+      }
+      
+      // Password validation
+      if (password.length < 6) {
+        showError('signup', 'Password must be at least 6 characters');
+        return;
+      }
+      
+      firebase.auth().createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+          // Hide the error message if it was showing
+          document.getElementById('signup-error').style.display = 'none';
+        })
+        .catch((error) => {
+          // Show error message
+          showError('signup', `Sign up failed: ${error.message}`);
+        });
+    }
+    
+    // Logout function
+    function logoutUser() {
+      // Check if Firebase is initialized
+      if (typeof firebase === 'undefined' || !firebase.auth) {
+        console.error('Firebase not initialized. Please refresh the page.');
+        return;
+      }
+      
+      firebase.auth().signOut()
+        .catch((error) => {
+          console.error("Error signing out:", error);
+        });
+    }
+    
+    // Show error message
+    function showError(form, message) {
+      const errorElement = document.getElementById(`${form}-error`);
+      errorElement.textContent = message;
+      errorElement.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
