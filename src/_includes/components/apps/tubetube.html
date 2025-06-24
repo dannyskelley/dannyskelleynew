@@ -283,8 +283,15 @@ document.getElementById('toggleEditBtn').onclick = () => {
 document.getElementById('signUp').onclick = async () => {
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
-  await supabase.auth.signUp({ email, password });
-  alert('check your email to confirm');
+  const { error } = await supabase.auth.signUp(
+    { email, password },
+    { redirectTo: 'https://dannyskelley.com/tubetube' }
+  );
+  if (error) {
+    alert('Error signing up: ' + error.message);
+  } else {
+    alert('Check your email to confirm. You will be redirected after confirmation.');
+  }
 };
 
 document.getElementById('signIn').onclick = async () => {
