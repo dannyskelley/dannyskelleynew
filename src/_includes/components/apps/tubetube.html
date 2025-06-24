@@ -148,6 +148,8 @@
       <input type="text" id="video-url" placeholder="paste youtube url" />
       <button id="addBtn">add video</button>
       <button id="toggleEditBtn">edit mode: off</button>
+      <button id="shareBtn">share playlist</button>
+      <button id="logoutBtn">log out</button>
     </div>
     <div class="video-grid" id="videoGrid"></div>
     <footer>
@@ -172,6 +174,19 @@ const authEl = document.getElementById('auth');
 const appEl = document.getElementById('app');
 
 async function checkUser() {
+  const hash = location.hash.slice(1);
+  if (hash) {
+    const { data } = await supabase.from('playlists').select('*').eq('id', hash).single();
+    if (data) {
+      appEl.style.display = 'block';
+      authEl.style.display = 'none';
+      titleEl.textContent = data.title;
+      videos = data.videos || [];
+      Object.assign(notes, data.notes || {});
+      render();
+      return;
+    }
+  }
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
     authEl.style.display = 'none';
@@ -277,6 +292,21 @@ document.getElementById('signIn').onclick = async () => {
   const password = document.getElementById('password').value;
   await supabase.auth.signInWithPassword({ email, password });
   checkUser();
+};
+
+document.getElementById('logoutBtn').onclick = async () => {
+  await supabase.auth.signOut();
+  location.reload();
+};
+
+document.getElementById('shareBtn').onclick = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data } = await supabase.from('playlists').select('id').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(1).single();
+  if (data?.id) {
+    const link = `${location.origin}${location.pathname}#${data.id}`;
+    await navigator.clipboard.writeText(link);
+    alert("link copied to clipboard");
+  }
 };
 
 checkUser();
