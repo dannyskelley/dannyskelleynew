@@ -64,18 +64,6 @@
       background: #fff;
       color: #000;
     }
-    #shareLink {
-      font-size: 0.85rem;
-      background: #111;
-      border: 1px dashed #fff;
-      padding: 0.7rem;
-      border-radius: 3px;
-      width: 100%;
-      max-width: 900px;
-      word-break: break-word;
-      display: none;
-      text-align: center;
-    }
     .video-grid {
       display: flex;
       flex-direction: column;
@@ -114,7 +102,6 @@
       background: #eee;
       border-bottom: 1px solid #000;
     }
-
     .video-number {
       font-size: 1rem;
       margin-bottom: 0.5rem;
@@ -123,11 +110,6 @@
       padding: 0.2rem 0.4rem;
       max-width: 4ch;
     }
-
-    .edit-only {
-      display: none;
-    }
-
     @media (min-width: 900px) {
       .video-card {
         flex-direction: row;
@@ -140,7 +122,6 @@
         width: 40%;
       }
     }
-
     footer {
       font-size: 0.85rem;
       text-align: center;
@@ -154,208 +135,151 @@
   </style>
 </head>
 <body>
-  <div id="app">
-    <h1 id="title">brutalist youtube vault</h1>
-    <div class="video-grid" id="videoGrid"></div>
+  <div id="auth">
+    <input type="email" id="email" placeholder="email" />
+    <input type="password" id="password" placeholder="password" />
+    <button id="signUp">Sign Up</button>
+    <button id="signIn">Sign In</button>
+  </div>
 
+  <div id="app" style="display:none;">
+    <h1 id="title" contenteditable="false">brutalist youtube vault</h1>
     <div class="controls">
       <input type="text" id="video-url" placeholder="paste youtube url" />
       <button id="addBtn">add video</button>
-      <button id="shareBtn">share playlist</button>
       <button id="toggleEditBtn">edit mode: off</button>
-      <button id="undoBtn">undo</button>
-      <button id="deleteAllBtn">delete all</button>
     </div>
-    <div id="shareLink"></div>
+    <div class="video-grid" id="videoGrid"></div>
     <footer>
       made with love · <a href="https://designgandalf.com" target="_blank">get your own vault</a>
     </footer>
   </div>
 
-<script>
-  let videos = [];
-  const notes = {};
-  let editMode = false;
-  let previousState = null;
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-  const videoGrid = document.getElementById('videoGrid');
-  const addBtn = document.getElementById('addBtn');
-  const shareBtn = document.getElementById('shareBtn');
-  const shareLink = document.getElementById('shareLink');
-  const toggleEditBtn = document.getElementById('toggleEditBtn');
-  const deleteAllBtn = document.getElementById('deleteAllBtn');
-  const undoBtn = document.getElementById('undoBtn');
-  const titleEl = document.getElementById('title');
+const SUPABASE_URL = 'https://qgzhgyhmpoioinzmfbvd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnemhneWhtcG9pb2luem1mYnZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3OTQzNTEsImV4cCI6MjA2NjM3MDM1MX0.smkIL8Y4IFMdaPUgtA1jHFI5yg7I2oJvftGDID-diJo';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  function backupState() {
-    previousState = {
-      videos: [...videos],
-      notes: JSON.parse(JSON.stringify(notes))
-    };
+let videos = [];
+const notes = {};
+let editMode = false;
+
+const videoGrid = document.getElementById('videoGrid');
+const titleEl = document.getElementById('title');
+const authEl = document.getElementById('auth');
+const appEl = document.getElementById('app');
+
+async function checkUser() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    authEl.style.display = 'none';
+    appEl.style.display = 'block';
+    loadPlaylist(user.id);
   }
+}
 
-  function restoreState() {
-    if (!previousState) return alert("nothing to undo");
-    videos = [...previousState.videos];
-    Object.keys(notes).forEach(k => delete notes[k]);
-    Object.assign(notes, JSON.parse(JSON.stringify(previousState.notes)));
-    saveState();
+async function loadPlaylist(userId) {
+  const { data } = await supabase.from('playlists').select('*').eq('user_id', userId).order('updated_at', { ascending: false });
+  if (data.length > 0) {
+    const p = data[0];
+    titleEl.textContent = p.title;
+    videos = p.videos || [];
+    Object.assign(notes, p.notes || {});
     render();
   }
+}
 
-  function getVideoId(url) {
-    try {
-      const u = new URL(url);
-      if (u.hostname.includes('youtube.com')) return u.searchParams.get('v');
-      if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
-    } catch {}
-    return null;
-  }
+function render() {
+  titleEl.contentEditable = editMode;
+  videoGrid.innerHTML = '';
+  videos.forEach((id, idx) => {
+    const card = document.createElement('div');
+    card.className = 'video-card';
 
-  function saveState() {
-    localStorage.setItem('ytVault', JSON.stringify({ videos, notes }));
-  }
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube.com/embed/${id}`;
 
-  function loadState() {
-    try {
-      const saved = JSON.parse(localStorage.getItem('ytVault') || '{}');
-      videos = saved.videos || [];
-      Object.assign(notes, saved.notes || {});
-    } catch {}
-  }
+    const noteBox = document.createElement('div');
+    noteBox.className = 'notes';
 
-  function reorderVideos() {
-    const indexed = videos.map((id, i) => {
-      const n = parseInt(document.querySelector(`[data-id="${id}"] .video-number`).textContent, 10);
-      return { id, n: isNaN(n) ? i + 1 : n };
-    });
-    indexed.sort((a, b) => a.n - b.n);
-    videos = indexed.map(v => v.id);
-    saveState();
-    render();
-  }
+    const number = document.createElement('div');
+    number.className = 'video-number';
+    number.contentEditable = editMode;
+    number.textContent = idx + 1;
+    noteBox.appendChild(number);
 
-  function render() {
-    titleEl.contentEditable = editMode;
-    titleEl.oninput = () => {
-      localStorage.setItem('ytTitle', titleEl.textContent.trim());
-    };
-
-    videoGrid.innerHTML = '';
-    videos.forEach((id, idx) => {
-      const card = document.createElement('div');
-      card.className = 'video-card';
-      card.dataset.id = id;
-
-      const iframe = document.createElement('iframe');
-      iframe.src = `https://www.youtube.com/embed/${id}`;
-      iframe.allowFullscreen = true;
-
-      const noteBox = document.createElement('div');
-      noteBox.className = 'notes';
-
-      const number = document.createElement('div');
-      number.className = 'video-number';
-      number.contentEditable = editMode;
-      number.textContent = idx + 1;
-      number.addEventListener('input', () => reorderVideos());
-      noteBox.appendChild(number);
-
-      for (let i = 0; i < 5; i++) {
-        const note = document.createElement('div');
-        note.className = 'note-line';
-        note.contentEditable = editMode;
-        note.textContent = notes[id]?.[i] || '';
-        note.addEventListener('input', () => {
-          if (!notes[id]) notes[id] = ["", "", "", "", ""];
-          notes[id][i] = note.textContent.trim();
-          saveState();
-        });
-        noteBox.appendChild(note);
-      }
-
-      if (editMode) {
-        const del = document.createElement('button');
-        del.className = 'edit-only';
-        del.textContent = 'delete';
-        del.onclick = () => {
-          backupState();
-          videos.splice(idx, 1);
-          delete notes[id];
-          saveState();
-          render();
-        };
-        noteBox.appendChild(del);
-      }
-
-      card.append(iframe, noteBox);
-      videoGrid.appendChild(card);
-    });
-
-    toggleEditBtn.textContent = `edit mode: ${editMode ? 'on' : 'off'}`;
-  }
-
-  function addVideo() {
-    const url = document.getElementById('video-url').value.trim();
-    const id = getVideoId(url);
-    if (!id) return alert("invalid url");
-    if (!notes[id]) notes[id] = ["", "", "", "", ""];
-    videos.push(id);
-    saveState();
-    render();
-    document.getElementById('video-url').value = '';
-  }
-
-  function generateShareLink() {
-    const data = { videos, notes };
-    const encoded = encodeURIComponent(JSON.stringify(data));
-    const fullUrl = `${location.origin}${location.pathname}#${encoded}`;
-    shareLink.textContent = fullUrl;
-    shareLink.style.display = 'block';
-  }
-
-  function toggleEditMode() {
-    editMode = !editMode;
-    render();
-  }
-
-  function deleteAll() {
-    if (!confirm("Delete all videos and notes?")) return;
-    backupState();
-    videos = [];
-    for (let k in notes) delete notes[k];
-    saveState();
-    render();
-  }
-
-  addBtn.onclick = addVideo;
-  shareBtn.onclick = generateShareLink;
-  toggleEditBtn.onclick = toggleEditMode;
-  deleteAllBtn.onclick = deleteAll;
-  undoBtn.onclick = restoreState;
-
-  document.getElementById('video-url').addEventListener('keydown', e => {
-    if (e.key === 'Enter') addVideo();
-  });
-
-  window.addEventListener('load', () => {
-    if (location.hash.length > 1) {
-      try {
-        const shared = JSON.parse(decodeURIComponent(location.hash.slice(1)));
-        videos = shared.videos || [];
-        Object.assign(notes, shared.notes || {});
-      } catch {}
-    } else {
-      loadState();
+    for (let i = 0; i < 5; i++) {
+      const note = document.createElement('div');
+      note.className = 'note-line';
+      note.contentEditable = editMode;
+      note.textContent = notes[id]?.[i] || '';
+      note.addEventListener('input', () => {
+        if (!notes[id]) notes[id] = ["", "", "", "", ""];
+        notes[id][i] = note.textContent.trim();
+        saveToSupabase();
+      });
+      noteBox.appendChild(note);
     }
 
-    const savedTitle = localStorage.getItem('ytTitle');
-    if (savedTitle) {
-      document.getElementById('title').textContent = savedTitle;
-    }
-
-    render();
+    card.append(iframe, noteBox);
+    videoGrid.appendChild(card);
   });
+  document.getElementById('toggleEditBtn').textContent = `edit mode: ${editMode ? 'on' : 'off'}`;
+}
+
+async function saveToSupabase() {
+  const { data: { user } } = await supabase.auth.getUser();
+  await supabase.from('playlists').upsert({
+    user_id: user.id,
+    title: titleEl.textContent,
+    videos,
+    notes,
+    updated_at: new Date()
+  });
+}
+
+function getVideoId(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('youtube.com')) return u.searchParams.get('v');
+    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+  } catch {}
+  return null;
+}
+
+document.getElementById('addBtn').onclick = async () => {
+  const url = document.getElementById('video-url').value.trim();
+  const id = getVideoId(url);
+  if (!id) return alert("invalid url");
+  if (!notes[id]) notes[id] = ["", "", "", "", ""];
+  videos.push(id);
+  document.getElementById('video-url').value = '';
+  render();
+  saveToSupabase();
+};
+
+document.getElementById('toggleEditBtn').onclick = () => {
+  editMode = !editMode;
+  render();
+};
+
+document.getElementById('signUp').onclick = async () => {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  await supabase.auth.signUp({ email, password });
+  alert('check your email to confirm');
+};
+
+document.getElementById('signIn').onclick = async () => {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  await supabase.auth.signInWithPassword({ email, password });
+  checkUser();
+};
+
+checkUser();
 </script>
 </body>
 </html>
