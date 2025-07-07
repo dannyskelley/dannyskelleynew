@@ -77,9 +77,21 @@
       border-radius: 3px;
       box-shadow: 6px 6px 0 #000, 10px 10px 0 #fff;
       transition: transform 0.25s ease;
+      position: relative;
     }
     .video-card:hover {
       transform: scale(1.01);
+    }
+    .delete-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: #000;
+      color: #fff;
+      border: 2px solid #000;
+      padding: 0.2rem 0.6rem;
+      font-size: 1rem;
+      cursor: pointer;
     }
     iframe {
       width: 100%;
@@ -89,26 +101,24 @@
     }
     .notes {
       padding: 1rem;
-      font-size: 1rem;
       display: flex;
       flex-direction: column;
-      gap: 0.4rem;
     }
-    .note-line {
-      border-bottom: 1px solid transparent;
-      outline-offset: 2px;
-    }
-    .note-line[contenteditable="true"]:focus {
-      background: #eee;
-      border-bottom: 1px solid #000;
-    }
-    .video-number {
+    .notes textarea {
+      width: 100%;
+      min-height: 150px;
+      font-family: 'Poppins', sans-serif;
       font-size: 1rem;
-      margin-bottom: 0.5rem;
-      background: #eee;
+      padding: 0.5rem;
       border: 1px solid #000;
-      padding: 0.2rem 0.4rem;
-      max-width: 4ch;
+      resize: vertical;
+      background: transparent;
+      color: #000;
+    }
+    .notes textarea.readonly {
+      border: none;
+      resize: none;
+      pointer-events: none;
     }
     @media (min-width: 900px) {
       .video-card {
@@ -135,21 +145,13 @@
   </style>
 </head>
 <body>
-  <div id="auth">
-    <input type="email" id="email" placeholder="email" />
-    <input type="password" id="password" placeholder="password" />
-    <button id="signUp">Sign Up</button>
-    <button id="signIn">Sign In</button>
-  </div>
-
-  <div id="app" style="display:none;">
-    <h1 id="title" contenteditable="false">brutalist youtube vault</h1>
+  <div id="app">
+    <h1 id="title" contenteditable="true">brutalist youtube vault</h1>
     <div class="controls">
       <input type="text" id="video-url" placeholder="paste youtube url" />
       <button id="addBtn">add video</button>
       <button id="toggleEditBtn">edit mode: off</button>
-      <button id="shareBtn">share playlist</button>
-      <button id="logoutBtn">log out</button>
+      <button id="shareBtn">share</button>
     </div>
     <div class="video-grid" id="videoGrid"></div>
     <footer>
@@ -157,166 +159,115 @@
     </footer>
   </div>
 
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+<script>
+function encodeData(obj){return btoa(encodeURIComponent(JSON.stringify(obj)))}
+function decodeData(str){return JSON.parse(decodeURIComponent(atob(str)))}
 
-const SUPABASE_URL = 'https://qgzhgyhmpoioinzmfbvd.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnemhneWhtcG9pb2luem1mYnZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3OTQzNTEsImV4cCI6MjA2NjM3MDM1MX0.smkIL8Y4IFMdaPUgtA1jHFI5yg7I2oJvftGDID-diJo';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let videos = []
+let notes = {}
+let editMode = false
 
-let videos = [];
-const notes = {};
-let editMode = false;
+const videoGrid = document.getElementById('videoGrid')
+const titleEl = document.getElementById('title')
 
-const videoGrid = document.getElementById('videoGrid');
-const titleEl = document.getElementById('title');
-const authEl = document.getElementById('auth');
-const appEl = document.getElementById('app');
-
-async function checkUser() {
-  const hash = location.hash.slice(1);
-  if (hash) {
-    const { data } = await supabase.from('playlists').select('*').eq('id', hash).single();
-    if (data) {
-      appEl.style.display = 'block';
-      authEl.style.display = 'none';
-      titleEl.textContent = data.title;
-      videos = data.videos || [];
-      Object.assign(notes, data.notes || {});
-      render();
-      return;
-    }
-  }
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    authEl.style.display = 'none';
-    appEl.style.display = 'block';
-    loadPlaylist(user.id);
-  }
-}
-
-async function loadPlaylist(userId) {
-  const { data } = await supabase.from('playlists').select('*').eq('user_id', userId).order('updated_at', { ascending: false });
-  if (data.length > 0) {
-    const p = data[0];
-    titleEl.textContent = p.title;
-    videos = p.videos || [];
-    Object.assign(notes, p.notes || {});
-    render();
-  }
-}
-
-function render() {
-  titleEl.contentEditable = editMode;
-  videoGrid.innerHTML = '';
+function render(){
+  titleEl.contentEditable = editMode
+  videoGrid.innerHTML = ''
   videos.forEach((id, idx) => {
-    const card = document.createElement('div');
-    card.className = 'video-card';
+    const card = document.createElement('div')
+    card.className = 'video-card'
 
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://www.youtube.com/embed/${id}`;
+    const iframe = document.createElement('iframe')
+    iframe.src = `https://www.youtube.com/embed/${id}`
 
-    const noteBox = document.createElement('div');
-    noteBox.className = 'notes';
-
-    const number = document.createElement('div');
-    number.className = 'video-number';
-    number.contentEditable = editMode;
-    number.textContent = idx + 1;
-    noteBox.appendChild(number);
-
-    for (let i = 0; i < 5; i++) {
-      const note = document.createElement('div');
-      note.className = 'note-line';
-      note.contentEditable = editMode;
-      note.textContent = notes[id]?.[i] || '';
-      note.addEventListener('input', () => {
-        if (!notes[id]) notes[id] = ["", "", "", "", ""];
-        notes[id][i] = note.textContent.trim();
-        saveToSupabase();
-      });
-      noteBox.appendChild(note);
+    if(editMode){
+      const del = document.createElement('button')
+      del.className = 'delete-btn'
+      del.textContent = 'x'
+      del.onclick = () => {
+        videos.splice(idx, 1)
+        delete notes[id]
+        saveCurrent()
+        render()
+      }
+      card.appendChild(del)
     }
 
-    card.append(iframe, noteBox);
-    videoGrid.appendChild(card);
-  });
-  document.getElementById('toggleEditBtn').textContent = `edit mode: ${editMode ? 'on' : 'off'}`;
+    const noteBox = document.createElement('div')
+    noteBox.className = 'notes'
+    const ta = document.createElement('textarea')
+    ta.value = notes[id] || ''
+    ta.readOnly = !editMode
+    ta.classList.toggle('readonly', !editMode)
+    ta.oninput = () => {
+      notes[id] = ta.value
+      saveCurrent()
+    }
+    noteBox.appendChild(ta)
+
+    card.append(iframe, noteBox)
+    videoGrid.appendChild(card)
+  })
+  document.getElementById('toggleEditBtn').textContent = `edit mode: ${editMode ? 'on' : 'off'}`
 }
 
-async function saveToSupabase() {
-  const { data: { user } } = await supabase.auth.getUser();
-  await supabase.from('playlists').upsert({
-    user_id: user.id,
-    title: titleEl.textContent,
-    videos,
-    notes,
-    updated_at: new Date()
-  });
+function saveCurrent(){
+  localStorage.setItem('currentPlaylist', JSON.stringify({ title: titleEl.textContent, videos, notes }))
+}
+function loadCurrent(){
+  const data = JSON.parse(localStorage.getItem('currentPlaylist') || 'null')
+  if(data){
+    titleEl.textContent = data.title || 'brutalist youtube vault'
+    videos = data.videos || []
+    notes = data.notes || {}
+  }
 }
 
-function getVideoId(url) {
-  try {
+function share(){
+  const data = {title:titleEl.textContent,videos,notes};
+  const link = `${location.origin}${location.pathname}#data=${encodeData(data)}`;
+  navigator.clipboard.writeText(link).then(()=>alert('link copied'));
+}
+
+function getVideoId(url){
+  try{
     const u = new URL(url);
-    if (u.hostname.includes('youtube.com')) return u.searchParams.get('v');
-    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
-  } catch {}
+    if(u.hostname.includes('youtube.com')) return u.searchParams.get('v');
+    if(u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+  }catch{}
   return null;
 }
 
-document.getElementById('addBtn').onclick = async () => {
-  const url = document.getElementById('video-url').value.trim();
-  const id = getVideoId(url);
-  if (!id) return alert("invalid url");
-  if (!notes[id]) notes[id] = ["", "", "", "", ""];
-  videos.push(id);
-  document.getElementById('video-url').value = '';
-  render();
-  saveToSupabase();
-};
+document.getElementById('addBtn').onclick = () => {
+  const url = document.getElementById('video-url').value.trim()
+  const id = getVideoId(url)
+  if(!id) return alert('invalid url')
+  if(!videos.includes(id)) videos.push(id)
+  notes[id] = notes[id] || ''
+  document.getElementById('video-url').value = ''
+  saveCurrent()
+  render()
+}
 
 document.getElementById('toggleEditBtn').onclick = () => {
-  editMode = !editMode;
-  render();
-};
+  editMode = !editMode
+  render()
+}
 
-document.getElementById('signUp').onclick = async () => {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  const { error } = await supabase.auth.signUp(
-    { email, password },
-    { redirectTo: 'https://dannyskelley.com/tubetube' }
-  );
-  if (error) {
-    alert('Error signing up: ' + error.message);
-  } else {
-    alert('Check your email to confirm. You will be redirected after confirmation.');
+document.getElementById('shareBtn').onclick = share
+
+;(function init(){
+  if(location.hash.startsWith('#data=')){
+    try{
+      const obj = decodeData(location.hash.replace('#data=',''));
+      titleEl.textContent = obj.title||'brutalist youtube vault';
+      videos = obj.videos||[]; notes=obj.notes||{};
+    }catch(e){console.error('invalid share link');}
+  }else{
+    loadCurrent();
   }
-};
-
-document.getElementById('signIn').onclick = async () => {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  await supabase.auth.signInWithPassword({ email, password });
-  checkUser();
-};
-
-document.getElementById('logoutBtn').onclick = async () => {
-  await supabase.auth.signOut();
-  location.reload();
-};
-
-document.getElementById('shareBtn').onclick = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data } = await supabase.from('playlists').select('id').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(1).single();
-  if (data?.id) {
-    const link = `${location.origin}${location.pathname}#${data.id}`;
-    await navigator.clipboard.writeText(link);
-    alert("link copied to clipboard");
-  }
-};
-
-checkUser();
+  render()
+})()
 </script>
 </body>
 </html>
