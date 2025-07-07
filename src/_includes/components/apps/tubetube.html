@@ -146,8 +146,8 @@
 </head>
 <body>
   <div id="app">
-    <h1 id="title" contenteditable="true">brutalist youtube vault</h1>
-    <div class="controls">
+    <h1 id="title" contenteditable="true">get off youtube with dedicated playlists</h1>
+    <div class="controls" id="controls">
       <input type="text" id="video-url" placeholder="paste youtube url" />
       <button id="addBtn">add video</button>
       <button id="toggleEditBtn">edit mode: off</button>
@@ -155,7 +155,7 @@
     </div>
     <div class="video-grid" id="videoGrid"></div>
     <footer>
-      made with love · <a href="https://designgandalf.com" target="_blank">get your own vault</a>
+      made with love · <a href="https://designgandalf.com" target="_blank">get your playlist</a>
     </footer>
   </div>
 
@@ -166,12 +166,15 @@ function decodeData(str){return JSON.parse(decodeURIComponent(atob(str)))}
 let videos = []
 let notes = {}
 let editMode = false
+let sharedMode = false
 
 const videoGrid = document.getElementById('videoGrid')
 const titleEl = document.getElementById('title')
+const controlsEl = document.getElementById('controls')
 
 function render(){
-  titleEl.contentEditable = editMode
+  titleEl.contentEditable = editMode && !sharedMode
+  controlsEl.style.display = sharedMode ? 'none' : 'flex'
   videoGrid.innerHTML = ''
   videos.forEach((id, idx) => {
     const card = document.createElement('div')
@@ -180,7 +183,7 @@ function render(){
     const iframe = document.createElement('iframe')
     iframe.src = `https://www.youtube.com/embed/${id}`
 
-    if(editMode){
+    if(editMode && !sharedMode){
       const del = document.createElement('button')
       del.className = 'delete-btn'
       del.textContent = 'x'
@@ -197,8 +200,8 @@ function render(){
     noteBox.className = 'notes'
     const ta = document.createElement('textarea')
     ta.value = notes[id] || ''
-    ta.readOnly = !editMode
-    ta.classList.toggle('readonly', !editMode)
+    ta.readOnly = !editMode || sharedMode
+    ta.classList.toggle('readonly', !editMode || sharedMode)
     ta.oninput = () => {
       notes[id] = ta.value
       saveCurrent()
@@ -208,7 +211,8 @@ function render(){
     card.append(iframe, noteBox)
     videoGrid.appendChild(card)
   })
-  document.getElementById('toggleEditBtn').textContent = `edit mode: ${editMode ? 'on' : 'off'}`
+  const toggleEditBtn = document.getElementById('toggleEditBtn')
+  if (toggleEditBtn) toggleEditBtn.textContent = `edit mode: ${editMode ? 'on' : 'off'}`
 }
 
 function saveCurrent(){
@@ -262,6 +266,8 @@ document.getElementById('shareBtn').onclick = share
       const obj = decodeData(location.hash.replace('#data=',''));
       titleEl.textContent = obj.title||'brutalist youtube vault';
       videos = obj.videos||[]; notes=obj.notes||{};
+      editMode = false;
+      sharedMode = true;
     }catch(e){console.error('invalid share link');}
   }else{
     loadCurrent();
