@@ -8,11 +8,14 @@
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@900&display=swap');
     *, *::before, *::after { box-sizing: border-box; }
     body {
-      margin: 0; background: #000; color: #fff;
+      margin: 0;
+      background: #000;
+      color: #fff;
       font-family: 'Poppins', sans-serif;
       font-weight: 900;
       text-transform: lowercase;
-      display: flex; flex-direction: column;
+      display: flex;
+      flex-direction: column;
       align-items: center;
       padding: 1rem 0 5rem;
       min-height: 100vh;
@@ -106,19 +109,22 @@
     }
     .notes textarea {
       width: 100%;
-      min-height: 150px;
       font-family: 'Poppins', sans-serif;
       font-size: 1rem;
       padding: 0.5rem;
       border: 1px solid #000;
-      resize: vertical;
       background: transparent;
       color: #000;
+      resize: none;
+      overflow: hidden;
+      height:100%;
+      min-height: 250px;
     }
     .notes textarea.readonly {
       border: none;
       resize: none;
       pointer-events: none;
+      background: transparent;
     }
     @media (min-width: 900px) {
       .video-card {
@@ -155,125 +161,131 @@
     </div>
     <div class="video-grid" id="videoGrid"></div>
     <footer>
-      made with love · <a href="https://designgandalf.com" target="_blank">get your playlist</a>
+      made with love · <a href="https://dannyskelley.com" target="_blank">get your playlist</a>
     </footer>
   </div>
 
-<script>
-function encodeData(obj){return btoa(encodeURIComponent(JSON.stringify(obj)))}
-function decodeData(str){return JSON.parse(decodeURIComponent(atob(str)))}
+  <script>
+    function encodeData(obj){return btoa(encodeURIComponent(JSON.stringify(obj)))}
+    function decodeData(str){return JSON.parse(decodeURIComponent(atob(str)))}
 
-let videos = []
-let notes = {}
-let editMode = false
-let sharedMode = false
+    let videos = []
+    let notes = {}
+    let editMode = false
+    let sharedMode = false
 
-const videoGrid = document.getElementById('videoGrid')
-const titleEl = document.getElementById('title')
-const controlsEl = document.getElementById('controls')
+    const videoGrid = document.getElementById('videoGrid')
+    const titleEl = document.getElementById('title')
+    const controlsEl = document.getElementById('controls')
 
-function render(){
-  titleEl.contentEditable = editMode && !sharedMode
-  controlsEl.style.display = sharedMode ? 'none' : 'flex'
-  videoGrid.innerHTML = ''
-  videos.forEach((id, idx) => {
-    const card = document.createElement('div')
-    card.className = 'video-card'
+    function render(){
+      titleEl.contentEditable = editMode && !sharedMode
+      controlsEl.style.display = sharedMode ? 'none' : 'flex'
+      videoGrid.innerHTML = ''
+      videos.forEach((id, idx) => {
+        const card = document.createElement('div')
+        card.className = 'video-card'
 
-    const iframe = document.createElement('iframe')
-    iframe.src = `https://www.youtube.com/embed/${id}`
+        const iframe = document.createElement('iframe')
+        iframe.src = `https://www.youtube.com/embed/${id}`
 
-    if(editMode && !sharedMode){
-      const del = document.createElement('button')
-      del.className = 'delete-btn'
-      del.textContent = 'x'
-      del.onclick = () => {
-        videos.splice(idx, 1)
-        delete notes[id]
-        saveCurrent()
-        render()
+        if(editMode && !sharedMode){
+          const del = document.createElement('button')
+          del.className = 'delete-btn'
+          del.textContent = 'x'
+          del.onclick = () => {
+            videos.splice(idx, 1)
+            delete notes[id]
+            saveCurrent()
+            render()
+          }
+          card.appendChild(del)
+        }
+
+        const noteBox = document.createElement('div')
+        noteBox.className = 'notes'
+        const ta = document.createElement('textarea')
+        ta.value = notes[id] || ''
+        ta.readOnly = !editMode || sharedMode
+        ta.classList.toggle('readonly', !editMode || sharedMode)
+        ta.style.height = 'auto'
+        ta.style.height = ta.scrollHeight + 'px'
+        ta.oninput = () => {
+          notes[id] = ta.value
+          ta.style.height = 'auto'
+          ta.style.height = ta.scrollHeight + 'px'
+          saveCurrent()
+        }
+        noteBox.appendChild(ta)
+
+        card.append(iframe, noteBox)
+        videoGrid.appendChild(card)
+      })
+
+      const toggleEditBtn = document.getElementById('toggleEditBtn')
+      if (toggleEditBtn) toggleEditBtn.textContent = `edit mode: ${editMode ? 'on' : 'off'}`
+    }
+
+    function saveCurrent(){
+      localStorage.setItem('currentPlaylist', JSON.stringify({ title: titleEl.textContent, videos, notes }))
+    }
+
+    function loadCurrent(){
+      const data = JSON.parse(localStorage.getItem('currentPlaylist') || 'null')
+      if(data){
+        titleEl.textContent = data.title || 'brutalist youtube vault'
+        videos = data.videos || []
+        notes = data.notes || {}
       }
-      card.appendChild(del)
     }
 
-    const noteBox = document.createElement('div')
-    noteBox.className = 'notes'
-    const ta = document.createElement('textarea')
-    ta.value = notes[id] || ''
-    ta.readOnly = !editMode || sharedMode
-    ta.classList.toggle('readonly', !editMode || sharedMode)
-    ta.oninput = () => {
-      notes[id] = ta.value
+    function share(){
+      const data = {title:titleEl.textContent,videos,notes};
+      const link = `${location.origin}${location.pathname}#data=${encodeData(data)}`;
+      navigator.clipboard.writeText(link).then(()=>alert('link copied'));
+    }
+
+    function getVideoId(url){
+      try{
+        const u = new URL(url);
+        if(u.hostname.includes('youtube.com')) return u.searchParams.get('v');
+        if(u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+      }catch{}
+      return null;
+    }
+
+    document.getElementById('addBtn').onclick = () => {
+      const url = document.getElementById('video-url').value.trim()
+      const id = getVideoId(url)
+      if(!id) return alert('invalid url')
+      if(!videos.includes(id)) videos.push(id)
+      notes[id] = notes[id] || ''
+      document.getElementById('video-url').value = ''
       saveCurrent()
+      render()
     }
-    noteBox.appendChild(ta)
 
-    card.append(iframe, noteBox)
-    videoGrid.appendChild(card)
-  })
-  const toggleEditBtn = document.getElementById('toggleEditBtn')
-  if (toggleEditBtn) toggleEditBtn.textContent = `edit mode: ${editMode ? 'on' : 'off'}`
-}
+    document.getElementById('toggleEditBtn').onclick = () => {
+      editMode = !editMode
+      render()
+    }
 
-function saveCurrent(){
-  localStorage.setItem('currentPlaylist', JSON.stringify({ title: titleEl.textContent, videos, notes }))
-}
-function loadCurrent(){
-  const data = JSON.parse(localStorage.getItem('currentPlaylist') || 'null')
-  if(data){
-    titleEl.textContent = data.title || 'brutalist youtube vault'
-    videos = data.videos || []
-    notes = data.notes || {}
-  }
-}
+    document.getElementById('shareBtn').onclick = share
 
-function share(){
-  const data = {title:titleEl.textContent,videos,notes};
-  const link = `${location.origin}${location.pathname}#data=${encodeData(data)}`;
-  navigator.clipboard.writeText(link).then(()=>alert('link copied'));
-}
-
-function getVideoId(url){
-  try{
-    const u = new URL(url);
-    if(u.hostname.includes('youtube.com')) return u.searchParams.get('v');
-    if(u.hostname.includes('youtu.be')) return u.pathname.slice(1);
-  }catch{}
-  return null;
-}
-
-document.getElementById('addBtn').onclick = () => {
-  const url = document.getElementById('video-url').value.trim()
-  const id = getVideoId(url)
-  if(!id) return alert('invalid url')
-  if(!videos.includes(id)) videos.push(id)
-  notes[id] = notes[id] || ''
-  document.getElementById('video-url').value = ''
-  saveCurrent()
-  render()
-}
-
-document.getElementById('toggleEditBtn').onclick = () => {
-  editMode = !editMode
-  render()
-}
-
-document.getElementById('shareBtn').onclick = share
-
-;(function init(){
-  if(location.hash.startsWith('#data=')){
-    try{
-      const obj = decodeData(location.hash.replace('#data=',''));
-      titleEl.textContent = obj.title||'brutalist youtube vault';
-      videos = obj.videos||[]; notes=obj.notes||{};
-      editMode = false;
-      sharedMode = true;
-    }catch(e){console.error('invalid share link');}
-  }else{
-    loadCurrent();
-  }
-  render()
-})()
-</script>
+    ;(function init(){
+      if(location.hash.startsWith('#data=')){
+        try{
+          const obj = decodeData(location.hash.replace('#data=',''));
+          titleEl.textContent = obj.title||'brutalist youtube vault';
+          videos = obj.videos||[]; notes=obj.notes||{};
+          editMode = false;
+          sharedMode = true;
+        }catch(e){console.error('invalid share link');}
+      }else{
+        loadCurrent();
+      }
+      render()
+    })()
+  </script>
 </body>
 </html>
