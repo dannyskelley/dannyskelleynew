@@ -4,288 +4,184 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Brutalist YouTube Vault</title>
+  <!-- Compression lib -->
+  <script src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"></script>
+  <!-- YouTube Iframe API (for timestamps) -->
+  <script src="https://www.youtube.com/iframe_api"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@900&display=swap');
-    *, *::before, *::after { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: #000;
-      color: #fff;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 900;
-      text-transform: lowercase;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 1rem 0 5rem;
-      min-height: 100vh;
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{
+      background:#000;color:#fff;font-family:'Poppins',sans-serif;font-weight:900;text-transform:lowercase;
+      display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:1rem 0 5rem
     }
-    #app {
-      max-width: 900px;
-      width: 95vw;
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
+    #app{max-width:900px;width:95vw;display:flex;flex-direction:column;gap:2rem}
+    h1{font-size:2.2rem;text-align:center;letter-spacing:-.02em}
+    h1[contenteditable="true"]:focus{outline:none;background:#111;border-bottom:2px solid #fff}
+    .controls,.tag-bar{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center}
+    .controls input,.controls button{
+      font-family:'Poppins',sans-serif;font-weight:900;font-size:1rem;background:transparent;color:#fff;
+      border:none;border-bottom:1px solid #fff;padding:.5rem .7rem;min-width:160px;outline-offset:2px
     }
-    h1 {
-      font-size: 2.2rem;
-      text-align: center;
-      margin: 0 0 1rem;
-      letter-spacing: -0.02em;
+    .controls button{cursor:pointer;border:2px solid #fff;border-radius:2px;transition:.3s}
+    .controls button:hover{background:#fff;color:#000}
+    .tag{border:1px solid #fff;padding:.3rem .6rem;cursor:pointer;font-size:.9rem;text-transform:lowercase}
+    .tag.active{background:#fff;color:#000}
+    .video-grid{display:flex;flex-direction:column;gap:2rem}
+    .video-card{
+      background:#fff;color:#000;display:flex;flex-direction:column;border-radius:3px;
+      box-shadow:6px 6px 0 #000,10px 10px 0 #fff;transition:transform .25s,opacity .25s;position:relative
     }
-    h1[contenteditable="true"]:focus {
-      outline: none;
-      background: #111;
-      border-bottom: 2px solid #fff;
+    .video-card.dragging{opacity:.4}
+    .video-card.watched{opacity:.45}
+    .video-card:hover{transform:scale(1.01)}
+    .delete-btn{
+      position:absolute;top:.5rem;right:.5rem;background:#000;color:#fff;border:2px solid #000;
+      padding:.2rem .6rem;font-size:1rem;cursor:pointer
     }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      justify-content: center;
-      margin-top: 2rem;
-    }
-    .controls input, .controls button {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 900;
-      font-size: 1rem;
-      background: transparent;
-      color: #fff;
-      border: none;
-      border-bottom: 1px solid #fff;
-      padding: 0.5rem 0.7rem;
-      min-width: 180px;
-      outline-offset: 2px;
-    }
-    .controls button {
-      cursor: pointer;
-      border: 2px solid #fff;
-      border-radius: 2px;
-      transition: background 0.3s ease, color 0.3s ease;
-    }
-    .controls button:hover {
-      background: #fff;
-      color: #000;
-    }
-    .video-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
-    }
-    .video-card {
-      background: #fff;
-      color: #000;
-      display: flex;
-      flex-direction: column;
-      border-radius: 3px;
-      box-shadow: 6px 6px 0 #000, 10px 10px 0 #fff;
-      transition: transform 0.25s ease;
-      position: relative;
-    }
-    .video-card:hover {
-      transform: scale(1.01);
-    }
-    .delete-btn {
-      position: absolute;
-      top: 0.5rem;
-      right: 0.5rem;
-      background: #000;
-      color: #fff;
-      border: 2px solid #000;
-      padding: 0.2rem 0.6rem;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-    iframe {
-      width: 100%;
-      height: 100%;
-      min-height: 300px;
-      border: none;
-    }
-    .notes {
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-    }
-    .notes textarea {
-      width: 100%;
-      font-family: 'Poppins', sans-serif;
-      font-size: 1rem;
-      padding: 0.5rem;
-      border: 1px solid #000;
-      background: transparent;
-      color: #000;
-      resize: none;
-      overflow: hidden;
-      height:100%;
-      min-height: 250px;
-    }
-    .notes textarea.readonly {
-      border: none;
-      resize: none;
-      pointer-events: none;
-      background: transparent;
-    }
-    @media (min-width: 900px) {
-      .video-card {
-        flex-direction: row;
-        align-items: stretch;
-      }
-      .video-card iframe {
-        width: 60%;
-      }
-      .video-card .notes {
-        width: 40%;
-      }
-    }
-    footer {
-      font-size: 0.85rem;
-      text-align: center;
-      margin-top: 2rem;
-      color: #888;
-    }
-    footer a {
-      color: #fff;
-      text-decoration: underline;
-    }
+    .watched-toggle{position:absolute;left:.5rem;top:.55rem;accent-color:#000;transform:scale(1.3);cursor:pointer}
+    iframe{width:100%;min-height:300px;border:none}
+    .notes{padding:1rem;display:flex;flex-direction:column}
+    .note{white-space:pre-wrap;word-wrap:break-word;width:100%;min-height:250px;flex:1;outline:1px solid #000;padding:.5rem;background:transparent;font-family:'Poppins',sans-serif;font-size:1rem}
+    .note.readonly{outline:none;pointer-events:none;background:transparent}
+    @media(min-width:900px){.video-card{flex-direction:row}.video-card iframe{width:60%}.video-card .notes{width:40%}}
+    footer{font-size:.85rem;text-align:center;color:#888}
+    footer a{color:#fff;text-decoration:underline}
   </style>
 </head>
 <body>
   <div id="app">
     <h1 id="title" contenteditable="true">get off youtube with dedicated playlists</h1>
+
+    <!-- Controls -->
     <div class="controls" id="controls">
       <input type="text" id="video-url" placeholder="paste youtube url" />
       <button id="addBtn">add video</button>
       <button id="toggleEditBtn">edit mode: off</button>
       <button id="shareBtn">share</button>
+      <button id="exportBtn">export</button>
     </div>
+
+    <!-- Filter Tags -->
+    <div class="tag-bar" id="tagBar"></div>
+
+    <!-- Videos -->
     <div class="video-grid" id="videoGrid"></div>
-    <footer>
-      made with love · <a href="https://dannyskelley.com" target="_blank">get your playlist</a>
-    </footer>
+
+    <footer>made with love · <a href="https://dannyskelley.com" target="_blank">get your playlist</a></footer>
   </div>
 
-  <script>
-    function encodeData(obj){return btoa(encodeURIComponent(JSON.stringify(obj)))}
-    function decodeData(str){return JSON.parse(decodeURIComponent(atob(str)))}
+<script>
+/***** UTILITIES *****/
+const encodeData = obj => LZString.compressToEncodedURIComponent(JSON.stringify(obj));
+const decodeData = str => JSON.parse(LZString.decompressFromEncodedURIComponent(str));
+const getVideoId = url => {try{const u=new URL(url);if(u.hostname.includes('youtube.com'))return u.searchParams.get('v');if(u.hostname.includes('youtu.be'))return u.pathname.slice(1);}catch{}return null};
+const fmt=time=>{
+  const m=Math.floor(time/60),s=Math.floor(time%60).toString().padStart(2,'0');return `${m}:${s}`
+};
 
-    let videos = []
-    let notes = {}
-    let editMode = false
-    let sharedMode = false
+/***** STATE *****/
+let videos=[],notes={},watched={},editMode=false,sharedMode=false,players={},currentFilter=null;
 
-    const videoGrid = document.getElementById('videoGrid')
-    const titleEl = document.getElementById('title')
-    const controlsEl = document.getElementById('controls')
+/***** DOM REFS *****/
+const videoGrid=document.getElementById('videoGrid');
+const titleEl=document.getElementById('title');
+const controlsEl=document.getElementById('controls');
+const tagBar=document.getElementById('tagBar');
 
-    function render(){
-      titleEl.contentEditable = editMode && !sharedMode
-      controlsEl.style.display = sharedMode ? 'none' : 'flex'
-      videoGrid.innerHTML = ''
-      videos.forEach((id, idx) => {
-        const card = document.createElement('div')
-        card.className = 'video-card'
+/***** YT API INITIALIZE *****/
+function onYouTubeIframeAPIReady(){renderPlayers()}
+function renderPlayers(){videos.forEach(id=>{
+  if(players[id])return;
+  const p=new YT.Player(`player-${id}`,{videoId:id,events:{}});
+  players[id]=p;
+})}
 
-        const iframe = document.createElement('iframe')
-        iframe.src = `https://www.youtube.com/embed/${id}`
+/***** RENDER *****/
+function render(){
+  titleEl.contentEditable=editMode&&!sharedMode;
+  controlsEl.style.display=sharedMode?'none':'flex';
+  videoGrid.innerHTML='';
 
-        if(editMode && !sharedMode){
-          const del = document.createElement('button')
-          del.className = 'delete-btn'
-          del.textContent = 'x'
-          del.onclick = () => {
-            videos.splice(idx, 1)
-            delete notes[id]
-            saveCurrent()
-            render()
-          }
-          card.appendChild(del)
-        }
+  // Build cards
+  videos.forEach((id,idx)=>{
+    const card=document.createElement('div');
+    card.className='video-card';
+    card.dataset.index=idx;
+    if(watched[id])card.classList.add('watched');
 
-        const noteBox = document.createElement('div')
-        noteBox.className = 'notes'
-        const ta = document.createElement('textarea')
-        ta.value = notes[id] || ''
-        ta.readOnly = !editMode || sharedMode
-        ta.classList.toggle('readonly', !editMode || sharedMode)
-        ta.style.height = 'auto'
-        ta.style.height = ta.scrollHeight + 'px'
-        ta.oninput = () => {
-          notes[id] = ta.value
-          ta.style.height = 'auto'
-          ta.style.height = ta.scrollHeight + 'px'
-          saveCurrent()
-        }
-        noteBox.appendChild(ta)
-
-        card.append(iframe, noteBox)
-        videoGrid.appendChild(card)
-      })
-
-      const toggleEditBtn = document.getElementById('toggleEditBtn')
-      if (toggleEditBtn) toggleEditBtn.textContent = `edit mode: ${editMode ? 'on' : 'off'}`
+    // Drag
+    if(editMode&&!sharedMode){
+      card.draggable=true;
+      card.addEventListener('dragstart',e=>{card.classList.add('dragging');e.dataTransfer.setData('text/plain',idx);});
+      card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+      card.addEventListener('dragover',e=>{e.preventDefault();});
+      card.addEventListener('drop',e=>{
+        if(!editMode)return;
+        const from=parseInt(e.dataTransfer.getData('text/plain'));
+        const to=parseInt(card.dataset.index);
+        if(from===to)return;
+        videos.splice(to,0,videos.splice(from,1)[0]);
+        saveCurrent();render();
+      });
     }
 
-    function saveCurrent(){
-      localStorage.setItem('currentPlaylist', JSON.stringify({ title: titleEl.textContent, videos, notes }))
+    // Watched toggle
+    const cb=document.createElement('input');cb.type='checkbox';cb.className='watched-toggle';cb.checked=!!watched[id];
+    cb.onchange=()=>{watched[id]=cb.checked;saveCurrent();render();};
+    card.appendChild(cb);
+
+    // Delete
+    if(editMode&&!sharedMode){
+      const del=document.createElement('button');del.className='delete-btn';del.textContent='x';del.onclick=()=>{videos.splice(idx,1);delete notes[id];delete watched[id];saveCurrent();render();};card.appendChild(del);
     }
 
-    function loadCurrent(){
-      const data = JSON.parse(localStorage.getItem('currentPlaylist') || 'null')
-      if(data){
-        titleEl.textContent = data.title || 'brutalist youtube vault'
-        videos = data.videos || []
-        notes = data.notes || {}
-      }
-    }
+    // Iframe
+    const iframe=document.createElement('iframe');iframe.id=`player-${id}`;iframe.src=`https://www.youtube.com/embed/${id}?enablejsapi=1`;iframe.allow='accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+    // Timestamp insert
+    iframe.ondblclick=()=>{if(!editMode||sharedMode)return;const p=players[id];if(p&&p.getCurrentTime){const time=p.getCurrentTime();const noteEl=card.querySelector('.note');noteEl.innerText+=`\n${fmt(time)} – `;notes[id]=noteEl.innerText;saveCurrent();}}
 
-    function share(){
-      const data = {title:titleEl.textContent,videos,notes};
-      const link = `${location.origin}${location.pathname}#data=${encodeData(data)}`;
-      navigator.clipboard.writeText(link).then(()=>alert('link copied'));
-    }
+    // Notes
+    const noteBox=document.createElement('div');noteBox.className='notes';
+    const note=document.createElement('div');note.className='note';note.contentEditable=editMode&&!sharedMode;note.classList.toggle('readonly',!editMode||sharedMode);note.innerText=notes[id]||'';
+    note.addEventListener('input',()=>{notes[id]=note.innerText;updateTags();saveCurrent();});
+    noteBox.appendChild(note);
 
-    function getVideoId(url){
-      try{
-        const u = new URL(url);
-        if(u.hostname.includes('youtube.com')) return u.searchParams.get('v');
-        if(u.hostname.includes('youtu.be')) return u.pathname.slice(1);
-      }catch{}
-      return null;
-    }
+    card.append(iframe,noteBox);
+    videoGrid.appendChild(card);
+  });
 
-    document.getElementById('addBtn').onclick = () => {
-      const url = document.getElementById('video-url').value.trim()
-      const id = getVideoId(url)
-      if(!id) return alert('invalid url')
-      if(!videos.includes(id)) videos.push(id)
-      notes[id] = notes[id] || ''
-      document.getElementById('video-url').value = ''
-      saveCurrent()
-      render()
-    }
+  // Update controls
+  const toggleBtn=document.getElementById('toggleEditBtn');if(toggleBtn)toggleBtn.textContent=`edit mode: ${editMode?'on':'off'}`;
 
-    document.getElementById('toggleEditBtn').onclick = () => {
-      editMode = !editMode
-      render()
-    }
+  // Render tag filter bar
+  updateTags();
 
-    document.getElementById('shareBtn').onclick = share
+  // Ensure players ready
+  if(typeof YT!=='undefined'&&YT&&YT.Player)renderPlayers();
+}
 
-    ;(function init(){
-      if(location.hash.startsWith('#data=')){
-        try{
-          const obj = decodeData(location.hash.replace('#data=',''));
-          titleEl.textContent = obj.title||'brutalist youtube vault';
-          videos = obj.videos||[]; notes=obj.notes||{};
-          editMode = false;
-          sharedMode = true;
-        }catch(e){console.error('invalid share link');}
-      }else{
-        loadCurrent();
-      }
-      render()
-    })()
-  </script>
+/***** TAGS *****/
+function extractTags(){const set=new Set();videos.forEach(id=>{const text=(notes[id]||'');text.replace(/#(\w+)/g,(_,tag)=>set.add(tag.toLowerCase()));});return [...set];}
+function updateTags(){tagBar.innerHTML='';const tags=extractTags();if(!tags.length)return;tags.forEach(t=>{const span=document.createElement('div');span.className='tag';if(currentFilter===t)span.classList.add('active');span.textContent=`#${t}`;span.onclick=()=>{currentFilter=currentFilter===t?null:t;filterCards();updateTags();};tagBar.appendChild(span);});filterCards();}
+function filterCards(){Array.from(videoGrid.children).forEach(card=>{if(!currentFilter){card.style.display='';return;}const idx=parseInt(card.dataset.index);const id=videos[idx];const text=(notes[id]||'').toLowerCase();card.style.display=text.includes(`#${currentFilter}`)?'':'none';});}
+
+/***** PERSISTENCE *****/
+function saveCurrent(){localStorage.setItem('currentPlaylist',JSON.stringify({title:titleEl.textContent,videos,notes,watched}));}
+function loadCurrent(){try{const data=JSON.parse(localStorage.getItem('currentPlaylist')||'null');if(data){titleEl.textContent=data.title||'brutalist youtube vault';videos=data.videos||[];notes=data.notes||{};watched=data.watched||{};}}catch{}}
+
+/***** SHARE & EXPORT *****/
+function share(){const data={title:titleEl.textContent,videos,notes};const link=`${location.origin}${location.pathname}#data=${encodeData(data)}`;navigator.clipboard.writeText(link).then(()=>alert('link copied'));}
+function exportNotes(){let md=`# ${titleEl.textContent}\n\n`;videos.forEach((id,idx)=>{md+=`## Video ${idx+1}: https://youtu.be/${id}\n\n`;md+=`${notes[id]||''}\n\n---\n\n`;});const blob=new Blob([md],{type:'text/markdown'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${titleEl.textContent.replace(/\s+/g,'-')}.md`;a.click();URL.revokeObjectURL(url);}
+
+/***** EVENT BINDINGS *****/
+document.getElementById('addBtn').onclick=()=>{const url=document.getElementById('video-url').value.trim();const id=getVideoId(url);if(!id)return alert('invalid url');if(!videos.includes(id))videos.push(id);notes[id]=notes[id]||'';document.getElementById('video-url').value='';saveCurrent();render();};
+document.getElementById('toggleEditBtn').onclick=()=>{editMode=!editMode;render();};
+document.getElementById('shareBtn').onclick=share;
+document.getElementById('exportBtn').onclick=exportNotes;
+
+/***** INIT *****/
+(function init(){if(location.hash.startsWith('#data=')){try{const obj=decodeData(location.hash.replace('#data=',''));titleEl.textContent=obj.title||'brutalist youtube vault';videos=obj.videos||[];notes=obj.notes||{};watched={};editMode=false;sharedMode=true;}catch(e){console.error('invalid share link');}}else{loadCurrent();}render();})();
+</script>
 </body>
 </html>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minimal Meal Plan</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    html,body{
+      height:100%;
+      background:#000;
+      color:#fff;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    }
+
+    /* LAYOUT -------------------------------------------------------*/
+    #container{display:flex;flex-direction:column;}
+
+    @media(min-width:768px){
+      #container{flex-direction:row;height:100vh;}
+    }
+
+    /* LEFT COLUMN (APP) -------------------------------------------*/
+    #app{
+      width:100%;
+      padding:1.25rem;
+      max-width:640px;
+      touch-action:none;               /* allow custom swipe handling */
+    }
+
+    h1{
+      font-size:clamp(2.75rem,14vw,5.5rem);
+      font-weight:900;
+      text-align:left; margin-bottom:0.5rem; line-height:1.1;
+    }
+
+    p{
+      font-size:clamp(1.5rem,7vw,2.75rem);
+      text-align:left; margin-bottom:1.75rem; line-height:1.35;
+    }
+
+    .btn{
+      font-size:clamp(1.25rem,6vw,2rem);
+      padding:0.9rem 1.8rem;
+      border:none; border-radius:14px;
+      cursor:pointer; margin:0.4rem 0; text-align:left;
+    }
+
+    #checkBtn{
+      background:linear-gradient(180deg,#3c3c3f 0%,#151517 100%);
+      color:#fff;
+      box-shadow:0 8px 0 #000,0 8px 20px rgba(0,0,0,.6);
+      transition:transform .12s ease,box-shadow .12s ease;
+    }
+    #checkBtn:active{
+      transform:translateY(6px);
+      box-shadow:0 2px 0 #000,0 4px 10px rgba(0,0,0,.6);
+    }
+
+    #altBtn{background:#1c1c1e;color:#fff;transition:background .2s;}
+    #altBtn:hover{background:#333;}
+    .hidden{display:none;}
+
+    /* RIGHT COLUMN (SNACKS) ---------------------------------------*/
+    #snacks{display:none;}
+
+    @media(min-width:768px){
+      #snacks{
+        display:block;width:320px;background:#111;padding:1rem;
+        overflow-y:auto;position:sticky;top:0;height:100vh;
+      }
+      #snacks h2{
+        font-size:1.75rem;font-weight:800;margin-bottom:1rem;
+      }
+      #snacks ul{list-style:none;padding-left:0;font-size:1.25rem;line-height:1.8;}
+      #snacks li{margin-bottom:.5rem;border-bottom:1px solid #333;padding-bottom:.3rem;}
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <!-- MEAL APP -------------------------------------------------- -->
+    <div id="app">
+      <h1 id="mealTitle">Breakfast</h1>
+      <p id="mealContent">loading…</p>
+      <button id="checkBtn" class="btn">✔ Done</button><br>
+      <button id="altBtn"  class="btn">Another Option</button>
+    </div>
+
+    <!-- SNACK COLUMN --------------------------------------------- -->
+    <aside id="snacks">
+      <h2>Snacks</h2>
+      <ul>
+        <li>Skinny Pop popcorn</li>
+        <li>Celery + hummus</li>
+        <li>Baby carrots + hummus</li>
+        <li>Pickle</li>
+        <li>Cucumber slices + hummus</li>
+         <li>Cucumber slices + seaweed</li>
+          <li>Cucumber slices + tuna</li>
+           <li>Cucumber slices + vinegar</li>
+        <li>Cherry tomatoes</li>
+        <li>Seaweed snacks</li>
+        <li>Rice cakes</li>
+        <li>Apple slices + pb powder</li>
+        <li>Sugar free Jell-O cup</li>
+        <li>Roasted edamame</li>
+        <li>Nori crisps</li>
+        <li>Sparkling water</li>
+        <li>Black coffee / hot tea</li>
+       
+      </ul>
+    </aside>
+  </div>
+
+<script>
+/* DATA -----------------------------------------------------------*/
+const meals=[
+  {title:"Breakfast",options:[
+    "2-4 boiled eggs, tuna or salmon, 1 slice whole-grain toast, avocado, tomato, cucumber, feta, black coffee",
+    "Oatmeal, banana, peanut butter, cinnamon, black coffee",
+    "Leftover potato skillet + 2-4 eggs, avocado, tomato, feta, black coffee",
+    "Veggie omelet, spinach smoothie, soda water",
+    "Greek yogurt, berries, chia, almonds, black coffee",
+    "Protein shake, boiled eggs, apple",
+    "Avocado toast + boiled eggs, diet soda",
+    "High-fiber cereal, almond milk, banana"
+  ]},
+  {title:"Lunch",options:[
+    "Chicken or fish, rice, hummus, cucumber",
+    "Chipotle bowl, double chicken, veggies",
+    "Whole-grain crackers, cheese stick, hummus, carrot, celery, apple, peanut butter",
+    "Tuna salad wrap, carrot sticks, apple",
+    "Grilled salmon salad, mixed greens",
+    "Chicken salad sandwich, pickle",
+    "Tuna salad sandwich, pickle",
+    "Veggie sushi rolls",
+    "Black-bean quinoa bowl, avocado, salsa"
+  ]},
+  {title:"Dinner",options:[
+    "Tuna/feta/tomato salad + crackers",
+    "Ground turkey, sweet potato, avocado, spinach",
+    "Baked salmon, quinoa, broccoli",
+    "Chicken stir-fry, bell peppers, brown rice",
+    "Shrimp tacos, cabbage slaw",
+    "Lentil curry, brown rice",
+    "Baked potato, sautéed spinach, grilled chicken",
+    "Veggie chili, whole-grain bread"
+  ]}
+];
+
+/* STATE ----------------------------------------------------------*/
+let currentMeal=0,altIndex=0;
+
+/* DOM ------------------------------------------------------------*/
+const mealTitle=document.getElementById("mealTitle");
+const mealContent=document.getElementById("mealContent");
+const checkBtn=document.getElementById("checkBtn");
+const altBtn=document.getElementById("altBtn");
+const app=document.getElementById("app");
+
+/* FUNCTIONS ------------------------------------------------------*/
+const haptic=ms=>navigator.vibrate&&navigator.vibrate(ms);
+
+function updateMeal(){
+  const m=meals[currentMeal];
+  mealTitle.textContent=m.title;
+  mealContent.textContent=m.options[altIndex];
+}
+
+function nextOption(){
+  const opts=meals[currentMeal].options;
+  altIndex=(altIndex+1)%opts.length;
+  updateMeal();
+  haptic(20);
+}
+
+function done(){
+  confetti({particleCount:90,spread:65,origin:{y:0.7}});
+  haptic(50);
+  if(currentMeal<meals.length-1){
+    currentMeal++;altIndex=0;updateMeal();
+  }else{
+    mealTitle.textContent="Done for Today ✅";
+    mealContent.textContent="";
+    checkBtn.classList.add("hidden");
+    altBtn.classList.add("hidden");
+  }
+}
+
+/* CLICK HANDLERS -------------------------------------------------*/
+altBtn.addEventListener("click",nextOption);
+checkBtn.addEventListener("click",done);
+
+/* SWIPE HANDLERS -------------------------------------------------*/
+let startX=0,startY=0;
+app.addEventListener("pointerdown",e=>{
+  startX=e.clientX;startY=e.clientY;
+});
+app.addEventListener("pointerup",e=>{
+  const dx=e.clientX-startX;
+  const dy=e.clientY-startY;
+  const absX=Math.abs(dx),absY=Math.abs(dy);
+  const thresh=40;
+  if(absX>absY && absX>thresh){       // horizontal swipe → next option
+    nextOption();
+  }else if(absY>absX && absY>thresh && dy<0){ // swipe up → done
+    done();
+  }
+});
+
+/* INIT -----------------------------------------------------------*/
+updateMeal();
+</script>
+</body>
+</html>
